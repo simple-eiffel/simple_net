@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<system name="simple_net" uuid="AD73C844-E33E-4A1B-9C8D-FEBF4E2A6C1D">
+<system name="simple_net" uuid="AD73C844-E33E-4A1B-9C8D-FEBF4E2A6C1D" library_target="simple_net">
 	<description>
 		simple_net: TCP Socket Abstraction Library
 

@@ -61,7 +61,7 @@ feature {NONE} -- Representation
 	is_closed: BOOLEAN
 			-- True if closed
 
-feature -- Commands
+feature {NONE} -- Commands
 
 	do_connect: BOOLEAN
 			-- Connect to remote server. Returns true if successful.
@@ -79,6 +79,8 @@ feature -- Commands
 			-- If successful: is_connected and not is_error
 			-- If failed: not is_connected and is_error
 		end
+
+feature {NONE} -- Private implementation
 
 	do_send (a_data: ARRAY [NATURAL_8]): BOOLEAN
 			-- Send bytes. Returns true if successful.

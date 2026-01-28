@@ -61,7 +61,7 @@ feature {NONE} -- Representation
 	backlog: INTEGER
 			-- Listen backlog value
 
-feature -- Commands
+feature {NONE} -- Commands
 
 	do_listen (a_backlog: INTEGER): BOOLEAN
 			-- Start listening for connections with given backlog.
