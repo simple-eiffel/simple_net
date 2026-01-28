@@ -1,0 +1,29 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="200" fill="#667eea"/>
+
+  <!-- Network nodes -->
+  <circle cx="60" cy="60" r="12" fill="#ffffff"/>
+  <circle cx="140" cy="60" r="12" fill="#ffffff"/>
+  <circle cx="100" cy="140" r="12" fill="#ffffff"/>
+  <circle cx="60" cy="120" r="12" fill="#00d4aa"/>
+  <circle cx="140" cy="120" r="12" fill="#00d4aa"/>
+
+  <!-- Network connections -->
+  <g stroke="#ffffff" stroke-width="2" fill="none">
+    <line x1="60" y1="72" x2="60" y2="108"/>
+    <line x1="140" y1="72" x2="140" y2="108"/>
+    <line x1="72" y1="60" x2="128" y2="60"/>
+    <line x1="80" y1="70" x2="100" y2="130"/>
+    <line x1="120" y1="70" x2="100" y2="130"/>
+  </g>
+
+  <!-- Data flow indicators -->
+  <g stroke="#00d4aa" stroke-width="1.5" fill="none" stroke-dasharray="3,3">
+    <path d="M 60 85 Q 80 100 100 130"/>
+    <path d="M 140 85 Q 120 100 100 130"/>
+  </g>
+
+  <!-- Text -->
+  <text x="100" y="185" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#ffffff" font-weight="bold">Network</text>
+</svg>

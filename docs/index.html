@@ -9,7 +9,7 @@
 <body>
     <header>
         <div class="logo-container">
-            <div style="font-size: 3rem;">🔌</div>
+            <img src="images/logo.svg" alt="simple_net logo" class="logo">
         </div>
         <h1>simple_net</h1>
         <p class="tagline">Production-ready TCP socket abstraction for Eiffel</p>
@@ -51,28 +51,51 @@
         </section>
 
         <section id="features">
-            <h2>Features</h2>
-            <ul>
-                <li><strong>CLIENT_SOCKET:</strong> Intuitive TCP client with connect, send, receive, close</li>
-                <li><strong>SERVER_SOCKET:</strong> TCP server with listen, accept, configurable backlog</li>
-                <li><strong>ADDRESS:</strong> Immutable network endpoint (host:port) with IPv4 validation</li>
-                <li><strong>ERROR_TYPE:</strong> Semantic error classification (connection refused, timeout, etc.)</li>
-                <li><strong>SIMPLE_NET:</strong> Facade providing convenient factory methods</li>
-                <li><strong>100% Design by Contract:</strong> Preconditions, postconditions, and invariants throughout</li>
-                <li><strong>Void-safe:</strong> void_safety="all" - no null pointer errors</li>
-                <li><strong>SCOOP-compatible:</strong> Thread-safe design ready for concurrent execution</li>
-            </ul>
+            <h2>Key Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>Intuitive Client API</h3>
+                    <p>TCP client with simple connect, send, receive, close operations. No boilerplate.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Server Socket</h3>
+                    <p>TCP server with listen, accept, and configurable backlog for high-throughput applications.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Address Validation</h3>
+                    <p>Immutable network endpoint (host:port) with comprehensive IPv4 validation.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Semantic Errors</h3>
+                    <p>ERROR_TYPE classification instead of raw codes: connection_refused, timeout, etc.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>Design by Contract</h3>
+                    <p>Full preconditions, postconditions, and invariants on all features.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>SCOOP Compatible</h3>
+                    <p>Thread-safe design with proper separation semantics for concurrent programs.</p>
+                </div>
+            </div>
         </section>
 
         <section id="status">
             <h2>Status</h2>
-            <p><strong>v1.0.0 - Production Ready</strong></p>
+            <p><strong>v1.1.0 - Production Ready</strong></p>
             <ul>
-                <li>87+ tests passing (100% pass rate)</li>
-                <li>Design by Contract throughout (contracts never change)</li>
-                <li>Zero compilation warnings</li>
-                <li>Comprehensive documentation and examples</li>
-                <li>Adversarial and edge-case tested</li>
+                <li>132 tests passing (100% pass rate)</li>
+                <li>Enhanced contracts with 49 new postconditions (frame conditions)</li>
+                <li>Real SCOOP concurrency tests (12 separate object tests)</li>
+                <li>IPv4 validation with 15+ edge case tests</li>
+                <li>Design by Contract throughout</li>
+                <li>Void-safe and SCOOP-compatible</li>
             </ul>
         </section>
 
