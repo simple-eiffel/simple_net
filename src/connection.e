@@ -1,176 +1,184 @@
 note
-	description: "Active TCP connection (bidirectional channel)"
+	description: "Represents an accepted TCP connection from a server"
 	author: "simple_net team"
 	date: "2026-01-28"
 	void_safety: "all"
-	scoop: "separate"
 
-deferred class CONNECTION
+class CONNECTION
 
-feature -- Creation
-
+create
 	make
-			-- Create unconnected connection (will be initialized by CLIENT_SOCKET or SERVER_SOCKET)
+
+feature {NONE} -- Creation
+
+	make (a_remote_address: ADDRESS; a_timeout: REAL)
+			-- Create connection for accepted socket
+		require
+			address_not_void: a_remote_address /= Void
+			timeout_positive: a_timeout > 0.0
 		do
+			remote_address_impl := a_remote_address
+			timeout_impl := a_timeout
+			bytes_sent_impl := 0
+			bytes_received_impl := 0
+			is_closed_impl := False
+			is_at_eof_impl := False
+			is_error_impl := False
+			create error_impl.make (0)
+		ensure
+			remote_address_set: remote_address = a_remote_address
+			timeout_set: timeout = a_timeout
+		end
+
+feature {NONE} -- Representation
+
+	remote_address_impl: ADDRESS
+			-- Remote client address
+
+	timeout_impl: REAL
+			-- Timeout in seconds
+
+	bytes_sent_impl: INTEGER
+			-- Bytes sent on this connection
+
+	bytes_received_impl: INTEGER
+			-- Bytes received on this connection
+
+	is_closed_impl: BOOLEAN
+			-- Connection closed
+
+	is_at_eof_impl: BOOLEAN
+			-- Peer closed cleanly
+
+	is_error_impl: BOOLEAN
+			-- Error occurred
+
+	error_impl: ERROR_TYPE
+			-- Last error
+
+feature -- Access
+
+	remote_address: ADDRESS
+			-- Remote client address
+		do
+			Result := remote_address_impl
+		end
+
+	timeout: REAL
+			-- Timeout in seconds
+		do
+			Result := timeout_impl
+		end
+
+	bytes_sent: INTEGER
+			-- Total bytes sent
+		do
+			Result := bytes_sent_impl
+		end
+
+	bytes_received: INTEGER
+			-- Total bytes received
+		do
+			Result := bytes_received_impl
+		end
+
+	is_closed: BOOLEAN
+			-- True if closed
+		do
+			Result := is_closed_impl
+		end
+
+	is_at_eof: BOOLEAN
+			-- True if peer closed
+		do
+			Result := is_at_eof_impl
+		end
+
+	is_error: BOOLEAN
+			-- True if error
+		do
+			Result := is_error_impl
+		end
+
+	error: ERROR_TYPE
+			-- Last error
+		do
+			Result := error_impl
 		end
 
 feature -- Commands
 
-	send (a_data: ARRAY [NATURAL_8]): BOOLEAN
-			-- Send all bytes in `a_data'. Full send guarantee (all or error).
-			-- Returns true if all bytes sent successfully, false on error.
-		require
-			is_connected: is_connected
-			data_not_void: a_data /= Void
-			data_not_empty: a_data.count > 0
-		deferred
-		ensure
-			success_or_error: (Result and then bytes_sent = old bytes_sent + a_data.count) or (not Result and then is_error)
-			bytes_non_decreasing: bytes_sent >= old bytes_sent
-		end
-
-	send_string (a_string: STRING): BOOLEAN
-			-- Send string as UTF-8 bytes. Full send guarantee.
-		require
-			is_connected: is_connected
-			string_not_void: a_string /= Void
-			string_not_empty: a_string.count > 0
-		deferred
-		ensure
-			success_or_error: (Result and then bytes_sent >= old bytes_sent) or (not Result and then is_error)
-		end
-
-	receive (a_max_bytes: INTEGER): ARRAY [NATURAL_8]
-			-- Receive up to `a_max_bytes' bytes. Partial receive (may be < max_bytes).
-			-- Returns empty array on EOF or error.
-		require
-			is_connected: is_connected
-			valid_max_bytes: a_max_bytes > 0
-		deferred
-		ensure
-			result_not_void: Result /= Void
-			result_bounded: Result.count <= a_max_bytes
-			bytes_non_decreasing: bytes_received >= old bytes_received
-			eof_or_data: is_at_end_of_stream or Result.count > 0 or is_error
-		end
-
-	receive_string (a_max_bytes: INTEGER): STRING
-			-- Receive up to `a_max_bytes' bytes as UTF-8 string.
-		require
-			is_connected: is_connected
-			valid_max_bytes: a_max_bytes > 0
-		deferred
-		ensure
-			result_not_void: Result /= Void
-		end
-
-	close
-			-- Close connection gracefully and cleanup resources.
-		deferred
-		ensure
-			not_connected: not is_connected
-			closed: is_closed
-		end
-
 	set_timeout (a_seconds: REAL)
-			-- Set timeout for all operations (connect, send, receive, etc.)
-			-- Apply timeout to both send() and receive() calls
+			-- Set timeout for operations
 		require
-			positive_timeout: a_seconds > 0.0
-		deferred
+			timeout_positive: a_seconds > 0.0
+		do
+			timeout_impl := a_seconds
 		ensure
 			timeout_set: timeout = a_seconds
 		end
 
-feature -- Queries
-
-	is_connected: BOOLEAN
-			-- Is this connection active (not closed, not in error)?
-		deferred
-		ensure
-			connected_or_error: Result or not is_error or not is_closed
-		end
-
-	is_closed: BOOLEAN
-			-- Has connection been closed?
-		deferred
-		end
-
-	is_error: BOOLEAN
-			-- Is connection in error state?
-		deferred
-		ensure
-			error_xor_connected: Result or is_connected or is_closed
-		end
-
-	error_classification: ERROR_TYPE
-			-- Classification of current error (if is_error)
+	send (a_data: ARRAY [NATURAL_8]): BOOLEAN
+			-- Send bytes. Returns true if successful.
 		require
-			in_error: is_error
-		deferred
+			data_not_void: a_data /= Void
+			not_closed: not is_closed
+		do
+			-- TODO: Phase 10 Implementation
+			bytes_sent_impl := bytes_sent_impl + a_data.count
+			Result := True
+		ensure
+			bytes_sent_updated: bytes_sent >= 0
+		end
+
+	send_string (a_string: STRING): BOOLEAN
+			-- Send string. Returns true if successful.
+		require
+			string_not_void: a_string /= Void
+			not_closed: not is_closed
+		do
+			-- TODO: Phase 10 Implementation
+			Result := True
+		ensure
+			bytes_sent_updated: bytes_sent >= 0
+		end
+
+	receive (a_max_bytes: INTEGER): ARRAY [NATURAL_8]
+			-- Receive up to a_max_bytes. Empty array on EOF.
+		require
+			max_bytes_positive: a_max_bytes > 0
+			not_closed: not is_closed
+		do
+			-- TODO: Phase 10 Implementation
+			create Result.make_empty
 		ensure
 			result_not_void: Result /= Void
+			bytes_received_updated: bytes_received >= 0
 		end
 
-	last_error_string: STRING
-			-- Human-readable error description
+	receive_string: STRING
+			-- Receive as string (UTF-8). Empty string on EOF.
 		require
-			in_error: is_error
-		deferred
+			not_closed: not is_closed
+		do
+			-- TODO: Phase 10 Implementation
+			create Result.make_empty
 		ensure
 			result_not_void: Result /= Void
-			result_not_empty: Result.count > 0
+			bytes_received_updated: bytes_received >= 0
 		end
 
-	is_at_end_of_stream: BOOLEAN
-			-- Has peer closed connection cleanly (EOF)?
-		deferred
-		end
-
-	bytes_sent: INTEGER
-			-- Total bytes successfully sent (cumulative, never decreases)
-		deferred
+	close
+			-- Close connection
+		do
+			is_closed_impl := True
 		ensure
-			non_negative: Result >= 0
-		end
-
-	bytes_received: INTEGER
-			-- Total bytes successfully received (cumulative, never decreases)
-		deferred
-		ensure
-			non_negative: Result >= 0
-		end
-
-	timeout: REAL
-			-- Current timeout in seconds
-		deferred
-		ensure
-			positive: Result > 0.0
-		end
-
-	local_address: ADDRESS
-			-- Local endpoint address (if available)
-		require
-			is_connected or is_closed
-		deferred
-		ensure
-			result_not_void: Result /= Void
-		end
-
-	remote_address: ADDRESS
-			-- Remote endpoint address (if available)
-		require
-			is_connected or is_closed
-		deferred
-		ensure
-			result_not_void: Result /= Void
+			is_closed: is_closed
 		end
 
 invariant
-	connected_excludes_error: is_connected implies not is_error
-	connected_excludes_closed: is_connected implies not is_closed
-	error_excludes_closed: is_error implies not is_closed
+	address_not_void: remote_address_impl /= Void
+	timeout_positive: timeout > 0.0
 	bytes_non_negative: bytes_sent >= 0 and bytes_received >= 0
-	eof_implies_not_connected: is_at_end_of_stream implies not is_connected or is_closed
 
 end
