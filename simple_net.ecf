@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system name="simple_net" uuid="AD73C844-E33E-4A1B-9C8D-FEBF4E2A6C1D">
+	<description>
+		simple_net: TCP Socket Abstraction Library
+
+		Thin wrapper around ISE's net.ecf providing intuitive, US-friendly API
+		for TCP client/server programming. Reduces boilerplate from 50-100 LOC
+		to 5-10 LOC for typical patterns. 100% Design by Contract, SCOOP-safe,
+		void-safe.
+	</description>
+
+	<!-- Primary library target -->
+	<target name="simple_net">
+		<description>simple_net TCP socket library (no tests)</description>
+		<root class="SIMPLE_NET" feature="default_create"/>
+
+		<!-- Concurrency and Safety Capabilities -->
+		<capability>
+			<concurrency support="scoop"/>
+			<void_safety support="all"/>
+		</capability>
+
+		<!-- Enable all assertions in library for contract enforcement -->
+		<setting name="precondition" value="true"/>
+		<setting name="postcondition" value="true"/>
+		<setting name="invariant" value="true"/>
+
+		<!-- ISE Core Libraries (allowed: no simple_* equivalent) -->
+		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf">
+			<description>EiffelStudio base library (fundamental types)</description>
+		</library>
+
+		<!-- ISE Network Library (this is what we wrap - no simple_* equivalent exists) -->
+		<library name="net" location="$ISE_LIBRARY/library/net/net.ecf">
+			<description>ISE net.ecf - proven TCP/UDP socket implementation (20+ years)</description>
+		</library>
+
+		<!-- simple_* Preferred Libraries (ecosystem first policy) -->
+		<library name="simple_mml" location="$SIMPLE_EIFFEL/simple_mml/simple_mml.ecf">
+			<description>Mathematical Model Library for formal contract specifications</description>
+		</library>
+
+		<!-- Source Code Cluster -->
+		<cluster name="src" location=".\src" recursive="false">
+			<description>simple_net source code</description>
+		</cluster>
+
+	</target>
+
+	<!-- Test target extends library target -->
+	<target name="simple_net_tests" extends="simple_net">
+		<description>simple_net with test suite</description>
+		<root class="TEST_APP" feature="make"/>
+
+		<!-- Enable all assertions for testing -->
+		<setting name="precondition" value="true"/>
+		<setting name="postcondition" value="true"/>
+		<setting name="invariant" value="true"/>
+
+		<!-- ISE Testing Framework (kept for compatibility) -->
+		<library name="testing" location="$ISE_LIBRARY/library/testing/testing.ecf">
+			<description>EQA_TEST_SET framework for unit testing</description>
+		</library>
+
+		<!-- simple_testing: Better test base class (TEST_SET_BASE) -->
+		<library name="simple_testing" location="$SIMPLE_EIFFEL/simple_testing/simple_testing.ecf">
+			<description>simple_testing: Test framework base class (TEST_SET_BASE)</description>
+		</library>
+
+		<!-- Test Code Cluster -->
+		<cluster name="tests" location=".\testing" recursive="false">
+			<description>simple_net test suite</description>
+		</cluster>
+
+	</target>
+
+</system>

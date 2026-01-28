@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick API Reference - simple_net</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>simple_net</h1>
+        <p class="tagline">Quick API Reference</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="quick.html">Quick API</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_net">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="quick-examples">
+            <h2>Quick Examples</h2>
+
+            <h3>CLIENT_SOCKET</h3>
+            <pre><code>-- Create client
+client := create {SIMPLE_NET}.new_client_for_host_port ("example.com", 80)
+
+-- Connect
+if client.connect then
+    -- Send data
+    if client.send_string ("GET / HTTP/1.1\r\n") then
+        -- Receive response
+        response := client.receive_string (4096)
+    end
+    client.close
+end</code></pre>
+
+            <h3>SERVER_SOCKET</h3>
+            <pre><code>-- Create server
+server := create {SIMPLE_NET}.new_server_for_port (8080)
+
+-- Listen for connections
+if server.listen (10) then
+    -- Accept connection
+    connection := server.accept
+    if connection /= Void then
+        -- Process connection
+    end
+    server.close
+end</code></pre>
+
+            <h3>ADDRESS</h3>
+            <pre><code>-- Create address
+addr := create {SIMPLE_NET}.new_address_for_host_port ("192.168.1.1", 8080)
+
+-- Query address
+if addr.is_ipv4_address then
+    print (addr.as_string)  -- "192.168.1.1:8080"
+end
+
+-- Create loopback address
+loopback := create {SIMPLE_NET}.new_address_for_localhost_port (3000)
+if loopback.is_loopback then
+    print ("Loopback address")
+end</code></pre>
+
+            <h3>ERROR_TYPE</h3>
+            <pre><code>-- Handle errors
+if not client.connect then
+    error := client.error_classification
+    if error.is_connection_refused then
+        print ("Server refused connection")
+    elseif error.is_connection_timeout then
+        print ("Connection timed out")
+    end
+end</code></pre>
+        </section>
+
+        <section id="common-operations">
+            <h2>Common Operations</h2>
+
+            <h3>Check Connection State</h3>
+            <pre><code>if client.is_connected then
+    -- Socket is connected
+elseif client.is_error then
+    -- Connection failed
+elseif client.is_closed then
+    -- Connection closed
+end</code></pre>
+
+            <h3>Handle Timeouts</h3>
+            <pre><code>client.set_timeout (5.0)  -- 5 second timeout
+if not client.connect then
+    if client.error_classification.is_timeout then
+        print ("Connection timed out")
+    end
+end</code></pre>
+
+            <h3>Server Backlog Configuration</h3>
+            <pre><code>server.listen (100)  -- Queue up to 100 connections
+if server.listen (10) then
+    print ("Backlog: " + server.backlog.out)  -- "Backlog: 10"
+end</code></pre>
+
+            <h3>Track Data Transfer</h3>
+            <pre><code>client.send_string ("data")
+bytes_sent := client.bytes_sent
+print ("Sent " + bytes_sent.out + " bytes")</code></pre>
+
+            <h3>Error Information</h3>
+            <pre><code>if client.is_error then
+    error_msg := client.last_error_string
+    print ("Error: " + error_msg)
+end</code></pre>
+        </section>
+
+        <section id="key-classes">
+            <h2>Key Classes</h2>
+
+            <h3>SIMPLE_NET (Facade)</h3>
+            <p>Factory methods for creating sockets and addresses:</p>
+            <ul>
+                <li><code>new_client_for_host_port(host: STRING; port: INTEGER)</code></li>
+                <li><code>new_client_for_address(addr: ADDRESS)</code></li>
+                <li><code>new_server_for_port(port: INTEGER)</code></li>
+                <li><code>new_server_for_address(addr: ADDRESS)</code></li>
+                <li><code>new_address_for_host_port(host: STRING; port: INTEGER)</code></li>
+                <li><code>new_address_for_localhost_port(port: INTEGER)</code></li>
+            </ul>
+
+            <h3>CLIENT_SOCKET</h3>
+            <p>TCP client connection:</p>
+            <ul>
+                <li><code>connect(): BOOLEAN</code></li>
+                <li><code>send(data: ARRAY [NATURAL_8]): BOOLEAN</code></li>
+                <li><code>send_string(msg: STRING): BOOLEAN</code></li>
+                <li><code>receive(max_bytes: INTEGER): ARRAY [NATURAL_8]</code></li>
+                <li><code>receive_string(max_bytes: INTEGER): STRING</code></li>
+                <li><code>close()</code></li>
+                <li><code>set_timeout(seconds: REAL)</code></li>
+            </ul>
+
+            <h3>SERVER_SOCKET</h3>
+            <p>TCP server connection:</p>
+            <ul>
+                <li><code>listen(backlog: INTEGER): BOOLEAN</code></li>
+                <li><code>accept(): detachable CONNECTION</code></li>
+                <li><code>close()</code></li>
+                <li><code>set_timeout(seconds: REAL)</code></li>
+            </ul>
+
+            <h3>ADDRESS</h3>
+            <p>Network endpoint (host:port):</p>
+            <ul>
+                <li><code>make_for_host_port(host: STRING; port: INTEGER)</code></li>
+                <li><code>host: STRING</code></li>
+                <li><code>port: INTEGER</code></li>
+                <li><code>is_ipv4_address: BOOLEAN</code></li>
+                <li><code>is_loopback: BOOLEAN</code></li>
+                <li><code>as_string: STRING</code></li>
+            </ul>
+        </section>
+
+        <section id="next-steps">
+            <h2>Next Steps</h2>
+            <ul>
+                <li>Read the <a href="user-guide.html">User Guide</a> for detailed examples</li>
+                <li>Browse <a href="api-reference.html">API Reference</a> for complete documentation</li>
+                <li>Check <a href="cookbook.html">Cookbook</a> for common patterns and recipes</li>
+                <li>Study <a href="architecture.html">Architecture</a> to understand design decisions</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 Simple Eiffel Contributors. MIT License.</p>
+            <p><a href="https://github.com/simple-eiffel/simple_net">GitHub Repository</a></p>
+        </footer>
+    </main>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - simple_net</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>simple_net</h1>
+        <p class="tagline">Architecture & Design</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="quick.html">Quick API</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_net">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="overview">
+            <h2>Architecture Overview</h2>
+            <p>
+                simple_net provides a thin, contract-based abstraction over ISE EiffelStudio's
+                net.ecf library. The design prioritizes clarity and correctness through Design by Contract.
+            </p>
+        </section>
+
+        <section id="class-hierarchy">
+            <h2>Class Hierarchy</h2>
+            <pre><code>ANY
+ ├── SIMPLE_NET (Facade)
+ ├── ADDRESS (Value Object)
+ ├── ERROR_TYPE (Classification)
+ └── CONNECTION (Deferred Base)
+      ├── CLIENT_SOCKET
+      └── SERVER_SOCKET</code></pre>
+
+            <h3>Design Patterns</h3>
+            <ul>
+                <li><strong>Facade:</strong> SIMPLE_NET coordinates library access through factory methods</li>
+                <li><strong>Value Object:</strong> ADDRESS is immutable (thread-safe)</li>
+                <li><strong>Strategy:</strong> ERROR_TYPE classifies errors for retry logic</li>
+                <li><strong>Template Method:</strong> CONNECTION defines socket interface</li>
+                <li><strong>State Machine:</strong> Sockets enforce valid state transitions through contracts</li>
+            </ul>
+        </section>
+
+        <section id="state-machine">
+            <h2>State Machine Design</h2>
+            <p>
+                Both CLIENT_SOCKET and SERVER_SOCKET enforce a strict state machine where each state
+                is mutually exclusive:
+            </p>
+
+            <h3>CLIENT_SOCKET States</h3>
+            <pre><code>
+[Unconfigured]
+    |
+    +-- connect() --> [Connected] --close()--> [Closed]
+    |
+    +-- (error) --> [Error]
+</code></pre>
+
+            <p>Valid state combinations (invariant enforcement):</p>
+            <ul>
+                <li>is_connected: Implies NOT is_error AND NOT is_closed</li>
+                <li>is_error: Implies NOT is_connected AND NOT is_closed</li>
+                <li>is_closed: Implies NOT is_connected AND NOT is_error</li>
+            </ul>
+
+            <h3>SERVER_SOCKET States</h3>
+            <pre><code>
+[Unconfigured]
+    |
+    +-- listen() --> [Listening] --close()--> [Closed]
+    |
+    +-- (error) --> [Error]
+</code></pre>
+
+            <p>Same state machine as client (listening ≈ connected).</p>
+        </section>
+
+        <section id="contracts">
+            <h2>Design by Contract</h2>
+            <p>
+                Every class uses preconditions, postconditions, and invariants to specify behavior
+                formally:
+            </p>
+
+            <h3>Example: CLIENT_SOCKET.connect()</h3>
+            <pre><code>connect: BOOLEAN
+    require
+        not_connected: not is_connected
+        not_already_closed: not is_closed
+    do
+        -- Implementation attempts connection
+    ensure
+        success_implies_connected: Result implies (is_connected and not is_error)
+        failure_implies_error: (not Result) implies (is_error and not is_connected)
+    end</code></pre>
+
+            <h3>Contract Verification</h3>
+            <ul>
+                <li><strong>Preconditions:</strong> Guard against invalid operations (double connect, etc.)</li>
+                <li><strong>Postconditions:</strong> Guarantee behavior (connect succeeds or sets error)</li>
+                <li><strong>Invariants:</strong> Maintain valid state (connected XOR error XOR closed)</li>
+            </ul>
+
+            <p>
+                Contracts ensure that if you follow the API correctly (satisfy preconditions),
+                you get guaranteed behavior (postconditions) and valid state (invariants).
+            </p>
+        </section>
+
+        <section id="error-handling">
+            <h2>Error Handling Strategy</h2>
+            <p>
+                Instead of exceptions, simple_net uses explicit error states and ERROR_TYPE
+                classification for recoverable errors.
+            </p>
+
+            <h3>Error Classification</h3>
+            <table>
+                <tr>
+                    <th>Category</th>
+                    <th>Examples</th>
+                    <th>Retriable?</th>
+                </tr>
+                <tr>
+                    <td>Connection Errors</td>
+                    <td>refused, timeout, reset</td>
+                    <td>Some (timeout)</td>
+                </tr>
+                <tr>
+                    <td>I/O Errors</td>
+                    <td>read error, write error</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td>Bind Errors</td>
+                    <td>address in use, not available</td>
+                    <td>No</td>
+                </tr>
+            </table>
+
+            <h3>Error Flow</h3>
+            <pre><code>Client tries operation
+    |
+    +-- Success: returns true/data, socket connected
+    |
+    +-- Failure: sets is_error=true, error_classification set
+         |
+         +-- Retriable? Retry with backoff
+         |
+         +-- Fatal? Give up, propagate error</code></pre>
+        </section>
+
+        <section id="immutability">
+            <h2>Immutable Value Objects</h2>
+            <p>
+                ADDRESS is designed as an immutable value object to be thread-safe:
+            </p>
+
+            <ul>
+                <li>Created once with host and port</li>
+                <li>Never modified (no setters)</li>
+                <li>Can be shared across threads without synchronization</li>
+                <li>IPv4 validation happens at creation</li>
+                <li>Queries are pure (no side effects)</li>
+            </ul>
+
+            <p>
+                This design makes ADDRESS safe to pass between SCOOP processors
+                without lock-free synchronization overhead.
+            </p>
+        </section>
+
+        <section id="scoop">
+            <h2>SCOOP Compatibility</h2>
+            <p>
+                simple_net is designed for SCOOP (Shared Concurrent Object-Oriented Programming):
+            </p>
+
+            <h3>Design for Concurrency</h3>
+            <ul>
+                <li>No global mutable state</li>
+                <li>Each socket owns its state privately</li>
+                <li>ADDRESS is immutable (shareable without processor barriers)</li>
+                <li>No deadlock-prone locking</li>
+            </ul>
+
+            <h3>Thread-Safe Usage</h3>
+            <pre><code>-- Each client socket on separate processor
+client: separate CLIENT_SOCKET
+do
+    create client.make_for_host_port ("example.com", 80)
+    -- Processor barrier only when calling features
+    client.connect
+    client.send_string ("data")
+    client.close
+end</code></pre>
+        </section>
+
+        <section id="void-safety">
+            <h2>Void-Safety</h2>
+            <p>
+                All code uses void_safety="all" to eliminate null pointer errors:
+            </p>
+
+            <ul>
+                <li>No uninitialized references (everything has valid type)</li>
+                <li><code>detachable</code> types explicitly allow Void (e.g., <code>detachable CONNECTION</code>)</li>
+                <li><code>attached</code> types (default) never hold Void</li>
+                <li>Type system enforces checking before use</li>
+            </ul>
+
+            <p>Example:</p>
+            <pre><code>connection: detachable CONNECTION
+connection := server.accept  -- May be Void on timeout
+if connection /= Void then
+    -- Type system knows connection is attached here
+    connection.send (data)
+end</code></pre>
+        </section>
+
+        <section id="testing">
+            <h2>Testing Strategy</h2>
+            <p>
+                simple_net includes 87+ tests covering:
+            </p>
+
+            <h3>Test Categories</h3>
+            <table>
+                <tr>
+                    <th>Category</th>
+                    <th>Count</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td>Unit Tests</td>
+                    <td>10</td>
+                    <td>Individual feature behavior</td>
+                </tr>
+                <tr>
+                    <td>Contract-Derived Tests</td>
+                    <td>67</td>
+                    <td>Postcondition verification</td>
+                </tr>
+                <tr>
+                    <td>Adversarial Tests</td>
+                    <td>20</td>
+                    <td>Edge cases and invalid operations</td>
+                </tr>
+            </table>
+
+            <h3>Test Philosophy</h3>
+            <ul>
+                <li>Every postcondition has a corresponding test</li>
+                <li>Every invariant is verified</li>
+                <li>State transitions tested thoroughly</li>
+                <li>Boundary values tested (port 1, 65535, timeout 0.001, etc.)</li>
+                <li>Error paths tested (connection refused, timeout, etc.)</li>
+            </ul>
+        </section>
+
+        <section id="performance">
+            <h2>Performance Characteristics</h2>
+            <p>
+                simple_net is designed for correctness and clarity, not performance optimization.
+                However, the thin abstraction layer ensures minimal overhead:
+            </p>
+
+            <h3>Memory</h3>
+            <ul>
+                <li>ADDRESS: ~64 bytes (2 references + port)</li>
+                <li>CLIENT_SOCKET: ~256 bytes (8-10 state variables)</li>
+                <li>SERVER_SOCKET: ~320 bytes (10-12 state variables)</li>
+            </ul>
+
+            <h3>CPU</h3>
+            <ul>
+                <li>Queries: O(1) - direct field access</li>
+                <li>Operations: O(1) overhead over ISE net library</li>
+                <li>No unnecessary allocations or copies</li>
+            </ul>
+
+            <h3>Contract Overhead</h3>
+            <p>
+                Contracts add checking overhead but can be disabled in production builds
+                using compiler flags (finalize mode).
+            </p>
+        </section>
+
+        <section id="dependencies">
+            <h2>Dependencies</h2>
+            <p>
+                simple_net minimizes external dependencies:
+            </p>
+
+            <h3>Required</h3>
+            <ul>
+                <li>Eiffel base library (fundamental types)</li>
+                <li>ISE net library (proven TCP implementation)</li>
+            </ul>
+
+            <h3>Optional</h3>
+            <ul>
+                <li>simple_mml (Mathematical Model Library) - for formal postcondition proofs</li>
+            </ul>
+
+            <h3>Not Used</h3>
+            <ul>
+                <li>No external C libraries</li>
+                <li>No third-party Eiffel libraries</li>
+                <li>No platform-specific code</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 Simple Eiffel Contributors. MIT License.</p>
+            <p><a href="https://github.com/simple-eiffel/simple_net">GitHub Repository</a></p>
+        </footer>
+    </main>
+</body>
+</html>

@@ -1,0 +1,151 @@
+# Phase 3: Task Decomposition - Evidence
+
+## Project: simple_net
+## Date: 2026-01-28
+## Status: COMPLETE
+
+## Task Breakdown
+
+**Total Tasks:** 14
+**Task Groups:** 5
+
+### Group 1: Value Objects (2 tasks)
+- Task 1: ADDRESS immutable value object
+- Task 2: ERROR_TYPE error classification enum
+
+### Group 2: Base Classes (1 task)
+- Task 3: CONNECTION deferred base class
+
+### Group 3: CLIENT_SOCKET TCP Client (8 tasks)
+- Task 4: Initialization and state queries
+- Task 5: connect() TCP connection
+- Task 6: send() full send guarantee
+- Task 7: send_string() UTF-8 string send
+- Task 8: receive() data reception
+- Task 9: receive_string() UTF-8 string reception
+- Task 10: close() cleanup
+- Task 11: set_timeout() configuration
+
+### Group 4: SERVER_SOCKET TCP Server (2 tasks)
+- Task 12: Initialization and state queries
+- Task 13: listen(), accept(), close(), set_timeout()
+
+### Group 5: Facade (1 task)
+- Task 14: SIMPLE_NET factory facade
+
+## Dependency Analysis
+
+**No Dependencies:**
+- Tasks 1-2 (value objects) can start immediately
+
+**Blocked by Tasks 1-2:**
+- Tasks 3-4, 12 (all use ADDRESS and ERROR_TYPE)
+
+**Blocked by Tasks 1-2, 4:**
+- Tasks 5-11 (CLIENT_SOCKET features depend on Task 4 initialization)
+
+**Blocked by Tasks 1-2, 12:**
+- Task 13 (SERVER_SOCKET features depend on Task 12 initialization)
+
+**Blocked by All:**
+- Task 14 (SIMPLE_NET facade - last task)
+
+## Implementation Path
+
+**Critical Path (longest chain):**
+Task 1 → Task 4 → Task 5-11 → Task 14 (13 sequential dependencies)
+
+**Parallel Opportunities:**
+- Tasks 1-2 can be done in parallel
+- Tasks 5-11 can be done in parallel (all depend on Task 4 only)
+- Tasks 12-13 can start after Tasks 1-2 (while Tasks 5-11 in progress)
+
+**Recommended Sequential Order:**
+1. Phase 4.1: Tasks 1-2 (2 hours)
+2. Phase 4.2: Task 3 (0.5 hours - just verification)
+3. Phase 4.3: Tasks 4-11 (8-10 hours)
+   - Task 4: 1 hour
+   - Tasks 5-8: 2-3 hours each (4 tasks = 8-12 hours, but can parallelize)
+   - Tasks 9-11: 1 hour each (3 tasks = 3 hours)
+4. Phase 4.4: Tasks 12-13 (2-3 hours)
+5. Phase 4.5: Task 14 (0.5 hours)
+
+## Features Coverage
+
+All 37 public features covered:
+
+**ADDRESS (7 features):**
+- Constructors: make_for_host_port, make_for_localhost_port
+- Accessors: host, port, as_string
+- Queries: is_loopback, is_ipv4_address
+
+**ERROR_TYPE (13 features):**
+- Constructor: make
+- Accessor: code
+- Classifications (11): is_connection_refused, is_connection_timeout, is_connection_reset, is_read_error, is_write_error, is_bind_error, is_address_not_available, is_timeout, is_retriable, is_fatal, to_string
+
+**CONNECTION (deferred, 17 features):**
+- Commands: send, send_string, receive, receive_string, close, set_timeout
+- Queries: is_connected, is_closed, is_error, error_classification, last_error_string, is_at_end_of_stream, bytes_sent, bytes_received, timeout, local_address, remote_address
+
+**CLIENT_SOCKET (16 features):**
+- Constructors: make_for_host_port, make_for_address
+- Commands: connect, send, send_string, receive, receive_string, close, set_timeout
+- Queries: is_connected, is_closed, is_error, error_classification, last_error_string, is_at_end_of_stream, bytes_sent, bytes_received, timeout, remote_address, local_address
+
+**SERVER_SOCKET (14 features):**
+- Constructors: make_for_port, make_for_address
+- Commands: listen, accept, close, set_timeout
+- Queries: is_listening, is_closed, is_error, error_classification, last_error_string, backlog, connection_count, timeout, local_address, operation_timed_out
+
+**SIMPLE_NET (9 features):**
+- Constructor: make
+- Factories (6): new_client_for_host_port, new_client_for_address, new_server_for_port, new_server_for_address, new_address_for_host_port, new_address_for_localhost_port
+- Queries (2): version, description
+
+## Contract Coverage
+
+All 37 features have complete contracts:
+- Preconditions: 28 features
+- Postconditions: 37 features (all)
+- Invariants: 5 classes (ADDRESS, ERROR_TYPE, CONNECTION, CLIENT_SOCKET, SERVER_SOCKET)
+
+## Files to Modify
+
+1. src/address.e - 2 features (constructors complete, others query-only)
+2. src/error_type.e - 1 constructor, 12 queries
+3. src/connection.e - 0 implementation (all deferred, already complete)
+4. src/client_socket.e - 2 constructors + 8 commands/queries = 10 features
+5. src/server_socket.e - 2 constructors + 2 complex commands + 8 queries = 12 features
+6. src/simple_net.e - 1 constructor + 8 factories = 9 features
+
+## Testing Strategy Impact
+
+Phase 5 will create tests for:
+- Unit tests: Each task's acceptance criteria
+- Integration tests: Multi-task combinations (e.g., connect + send + receive)
+- Adversarial tests: Error paths, timeouts, resource cleanup
+
+## Key Implementation Notes
+
+**Shared Across All Tasks:**
+- Use ISE's NETWORK_SOCKET API for socket operations
+- Error code mapping: Linux vs Windows (111 vs 10061 for ECONNREFUSED, etc.)
+- Timeout handling: select() or non-blocking socket
+- State invariants: maintain mutual exclusion of is_connected/is_error/is_closed
+
+**Critical Implementation Decisions:**
+1. IPv4 validation: Task 1 must validate octets, not just count dots
+2. UTF-8 encoding: Tasks 7, 9 must handle multi-byte sequences at boundaries
+3. Full send guarantee: Task 6 must retry/buffer for partial writes
+4. Timeout implementation: Tasks 5, 8, 13 must apply timeout to socket operations
+
+## Approval Status
+
+**PENDING USER APPROVAL**
+
+## Next Steps
+
+Upon approval, run: `/eiffel.implement d:\prod\simple_net`
+
+This will guide implementation of each task in recommended order.

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookbook - simple_net</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>simple_net</h1>
+        <p class="tagline">Code Examples & Recipes</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="quick.html">Quick API</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_net">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="recipes">
+            <h2>Common Patterns & Recipes</h2>
+
+            <h3>Recipe 1: Simple HTTP GET Request</h3>
+            <pre><code>do
+    client := create {SIMPLE_NET}.new_client_for_host_port ("example.com", 80)
+
+    if client.connect then
+        client.send_string ("GET / HTTP/1.1\r\n")
+        client.send_string ("Host: example.com\r\n")
+        client.send_string ("Connection: close\r\n\r\n")
+
+        response := client.receive_string (8192)
+        print (response)
+
+        client.close
+    else
+        print ("Connection failed: " + client.last_error_string)
+    end
+end</code></pre>
+
+            <h3>Recipe 2: Echo Server</h3>
+            <pre><code>do
+    server := create {SIMPLE_NET}.new_server_for_port (5555)
+
+    if server.listen (10) then
+        print ("Server listening on port 5555")
+
+        from until server.is_closed loop
+            connection := server.accept
+            if connection /= Void then
+                data := connection.receive (1024)
+                if data.count > 0 then
+                    connection.send (data)
+                    print ("Echoed " + data.count.out + " bytes")
+                end
+            end
+
+            -- Exit after one connection (demo)
+            server.close
+        end
+    else
+        print ("Failed to listen: " + server.last_error_string)
+    end
+end</code></pre>
+
+            <h3>Recipe 3: Connection with Retry</h3>
+            <pre><code>do
+    max_retries := 3
+    delay := 1.0
+
+    from retry_count := 0 until retry_count = max_retries or client.is_connected loop
+        client := create {SIMPLE_NET}.new_client_for_host_port ("server", 8080)
+        client.set_timeout (5.0)
+
+        if client.connect then
+            print ("Connected!")
+        else
+            error := client.error_classification
+            if error.is_retriable then
+                print ("Retriable error, retrying in " + delay.out + "s")
+                -- In real code: sleep(delay)
+                delay := delay * 2.0
+                retry_count := retry_count + 1
+            else
+                print ("Fatal error: " + error.to_string)
+                retry_count := max_retries
+            end
+        end
+    end
+end</code></pre>
+
+            <h3>Recipe 4: Timeout Configuration</h3>
+            <pre><code>do
+    client := create {SIMPLE_NET}.new_client_for_host_port ("server", 3306)
+
+    -- Short timeout for initial connection
+    client.set_timeout (2.0)
+    if not client.connect then
+        print ("Could not reach server within 2s")
+        return
+    end
+
+    -- Longer timeout for data operations
+    client.set_timeout (30.0)
+    client.send_string ("SELECT * FROM large_table;")
+    response := client.receive_string (65536)
+
+    -- Reset to default before close
+    client.set_timeout (30.0)
+    client.close
+end</code></pre>
+
+            <h3>Recipe 5: Check Server Availability</h3>
+            <pre><code>do
+    server_available := False
+    client := create {SIMPLE_NET}.new_client_for_host_port ("server", 8080)
+    client.set_timeout (1.0)
+
+    if client.connect then
+        server_available := True
+        client.close
+    end
+
+    if server_available then
+        print ("Server is up")
+    else
+        print ("Server is down")
+    end
+end</code></pre>
+
+            <h3>Recipe 6: Parse IPv4 Address</h3>
+            <pre><code>do
+    addr := create {SIMPLE_NET}.new_address_for_host_port ("192.168.1.1", 8080)
+
+    if addr.is_ipv4_address then
+        parts := addr.host.split ('.')
+        if parts.count = 4 then
+            print ("IPv4: octets = " + parts.count.out)
+        end
+    elseif addr.is_loopback then
+        print ("Loopback address")
+    else
+        print ("Hostname: " + addr.host)
+    end
+end</code></pre>
+
+            <h3>Recipe 7: Track Data Transfer</h3>
+            <pre><code>do
+    client := create {SIMPLE_NET}.new_client_for_host_port ("server", 80)
+
+    if client.connect then
+        initial_bytes := client.bytes_sent
+
+        client.send_string ("Request 1")
+        bytes_after_1 := client.bytes_sent
+
+        client.send_string ("Request 2")
+        bytes_after_2 := client.bytes_sent
+
+        print ("Request 1 bytes: " + (bytes_after_1 - initial_bytes).out)
+        print ("Request 2 bytes: " + (bytes_after_2 - bytes_after_1).out)
+        print ("Total sent: " + client.bytes_sent.out)
+
+        client.close
+    end
+end</code></pre>
+
+            <h3>Recipe 8: Server with Address Configuration</h3>
+            <pre><code>do
+    -- Create specific address
+    addr := create {SIMPLE_NET}.new_address_for_host_port ("127.0.0.1", 9000)
+
+    -- Create server on that address
+    server := create {SIMPLE_NET}.new_server_for_address (addr)
+
+    if server.listen (5) then
+        print ("Listening on " + server.local_address.as_string)
+
+        connection := server.accept
+        if connection /= Void then
+            print ("Client accepted")
+        end
+
+        server.close
+    end
+end</code></pre>
+
+            <h3>Recipe 9: Error-Aware Client</h3>
+            <pre><code>do
+    client := create {SIMPLE_NET}.new_client_for_host_port ("server", 443)
+    client.set_timeout (5.0)
+
+    if client.connect then
+        data := "GET / HTTP/1.1\r\n\r\n"
+        if client.send_string (data) then
+            response := client.receive_string (4096)
+            print ("Response length: " + response.count.out)
+        else
+            print ("Send failed: " + client.last_error_string)
+        end
+        client.close
+    else
+        error := client.error_classification
+        if error.is_connection_refused then
+            print ("Server refused - check if it's running")
+        elseif error.is_connection_timeout then
+            print ("Server not responding - check network")
+        elseif error.is_connection_reset then
+            print ("Server reset connection")
+        else
+            print ("Error: " + error.to_string)
+        end
+    end
+end</code></pre>
+
+            <h3>Recipe 10: Safe Socket Cleanup</h3>
+            <pre><code>do
+    client := create {SIMPLE_NET}.new_client_for_host_port ("server", 8080)
+
+    -- Ensure socket is closed even if error occurs
+    if client.connect then
+        data := client.receive_string (1024)
+        -- Process data
+    else
+        print ("Connection failed")
+    end
+
+    -- Safe to call multiple times
+    client.close
+
+    -- Check final state
+    assert ("Socket closed", client.is_closed)
+end</code></pre>
+        </section>
+
+        <section id="anti-patterns">
+            <h2>Anti-Patterns to Avoid</h2>
+
+            <h3>❌ Don't: Ignore Connection Errors</h3>
+            <pre><code>-- BAD: No error checking
+client := create {SIMPLE_NET}.new_client_for_host_port ("server", 80)
+client.connect  -- Ignored!
+client.send_string ("data")  -- Precondition violation!</code></pre>
+
+            <p><strong>✅ Do:</strong> Always check connection status</p>
+            <pre><code>client := create {SIMPLE_NET}.new_client_for_host_port ("server", 80)
+if client.connect then
+    client.send_string ("data")
+end</code></pre>
+
+            <h3>❌ Don't: Use Non-Retriable Error as Retriable</h3>
+            <pre><code>-- BAD: Retrying on fatal error
+if not client.connect then
+    sleep (1.0)
+    client.connect  -- Retrying without checking error type!</code></pre>
+
+            <p><strong>✅ Do:</strong> Check error classification before retrying</p>
+            <pre><code>if not client.connect then
+    if client.error_classification.is_retriable then
+        sleep (1.0)
+        client.connect
+    end
+end</code></pre>
+
+            <h3>❌ Don't: Forget to Close Sockets</h3>
+            <pre><code>-- BAD: Resource leak
+client.connect
+client.send_string ("data")
+-- Forgot to close!</code></pre>
+
+            <p><strong>✅ Do:</strong> Always close sockets</p>
+            <pre><code>client.connect
+client.send_string ("data")
+client.close  -- Always close</code></pre>
+
+            <h3>❌ Don't: Use Socket After Error</h3>
+            <pre><code>-- BAD: Using error socket
+if not client.connect then
+    client.send_string ("retry")  -- Precondition violation!</code></pre>
+
+            <p><strong>✅ Do:</strong> Create new socket after error</p>
+            <pre><code>if not client.connect then
+    client := create {SIMPLE_NET}.new_client_for_host_port ("server", 80)
+    if client.connect then
+        client.send_string ("retry")
+    end
+end</code></pre>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>Troubleshooting</h2>
+
+            <h3>Connection Refused</h3>
+            <p><strong>Problem:</strong> <code>is_connection_refused</code> returns true</p>
+            <p><strong>Likely Cause:</strong> Server not running or port wrong</p>
+            <p><strong>Solution:</strong></p>
+            <pre><code>-- Check if server is running
+-- Check port number matches server
+-- Check firewall not blocking</code></pre>
+
+            <h3>Connection Timeout</h3>
+            <p><strong>Problem:</strong> <code>is_connection_timeout</code> returns true</p>
+            <p><strong>Likely Cause:</strong> Network unreachable or server slow</p>
+            <p><strong>Solution:</strong></p>
+            <pre><code>-- Increase timeout
+client.set_timeout (10.0)
+
+-- Check network connectivity
+-- Check server is responding</code></pre>
+
+            <h3>Socket Already Connected</h3>
+            <p><strong>Problem:</strong> Precondition violation on second connect</p>
+            <p><strong>Solution:</strong></p>
+            <pre><code>-- Create new socket for each connection
+client1 := create {SIMPLE_NET}.new_client_for_host_port ("server", 80)
+client1.connect
+-- ... use client1 ...
+client1.close
+
+-- For new connection, create new socket
+client2 := create {SIMPLE_NET}.new_client_for_host_port ("server", 80)
+client2.connect</code></pre>
+
+            <h3>Port Already in Use</h3>
+            <p><strong>Problem:</strong> <code>is_bind_error</code> on server listen</p>
+            <p><strong>Solution:</strong></p>
+            <pre><code>-- Use different port
+server := create {SIMPLE_NET}.new_server_for_port (8081)
+
+-- Or wait for port to become available
+-- Or kill process holding port</code></pre>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 Simple Eiffel Contributors. MIT License.</p>
+            <p><a href="https://github.com/simple-eiffel/simple_net">GitHub Repository</a></p>
+        </footer>
+    </main>
+</body>
+</html>

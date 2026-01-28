@@ -1,0 +1,257 @@
+# Pre-Phase Research Evidence
+# Project: simple_net Eiffel TCP Socket Abstraction
+# Date: January 28, 2026
+
+## RESEARCH PHASE COMPLETE
+
+Status: ✅ RESEARCH PHASE COMPLETE - READY FOR SPECIFICATION
+
+---
+
+## 7-Step Research Process
+
+### Step 1: SCOPE.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\01-SCOPE.md
+Content:
+  - Problem: ISE net.ecf is powerful but complex (boilerplate-heavy, academic naming)
+  - Users: Embedded devs, data scientists, web framework builders, systems integrators
+  - Success metrics: 5-10 LOC for client/server (vs 50-100 in ISE net)
+  - Scope: TCP, IPv4, Windows primary, blocking MVP
+  - Constraints: SCOOP, DBC, void-safe, zero warnings
+
+### Step 2: LANDSCAPE.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\02-LANDSCAPE.md
+Content:
+  - ISE net.ecf: Mature (20+ years), complex naming, academic terminology
+  - Python socket: Minimal boilerplate, intuitive naming (TARGET pattern)
+  - Go net: Clear intent (Dial/Listen), SCOOP ≈ goroutines
+  - Java NIO: Dual-mode (blocking/non-blocking), ByteBuffer abstraction
+  - Gap Analysis: No simple_* wrapper; repeated boilerplate across libraries
+  - Recommendation: BUILD (not ADOPT, not ADAPT)
+
+### Step 3: REQUIREMENTS.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\03-REQUIREMENTS.md
+Content:
+  - Functional: 15 requirements (TCP client/server, error classification, DBC, SCOOP)
+  - Non-functional: 12 requirements (latency <100ms, zero warnings, ≥85% test coverage)
+  - Constraints: 10 (void-safe, DBC, SCOOP, zero warnings, simple_* patterns)
+  - Semantic reframing: 11 naming changes (NETWORK_STREAM_SOCKET → CLIENT_SOCKET, etc.)
+  - Use cases: 3 detailed (HTTP validator, embedded sensor bridge, data streaming)
+
+### Step 4: DECISIONS.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\04-DECISIONS.md
+Content:
+  - D-001: Separate CLIENT_SOCKET / SERVER_SOCKET (intent clarity)
+  - D-002: Custom ADDRESS class with (host, port) (simplicity)
+  - D-003: Queryable state errors (Eiffel convention, no exceptions)
+  - D-004: Single universal timeout (Python pattern)
+  - D-005: Full send guarantee, partial receive (user expectations)
+  - D-006: Full DBC (pre+post+inv+MML) (foundation standard)
+  - D-007: Separate processor per connection (SCOOP native)
+  - D-008: Blocking mode MVP, async Phase 2 (simplicity first)
+  - D-009: Short method names (send, receive, connect) (Python/Go convention)
+
+### Step 5: INNOVATIONS.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\05-INNOVATIONS.md
+Content:
+  - I-001: US/Mainstream semantic reframing (CLIENT_SOCKET, not NETWORK_STREAM_SOCKET)
+  - I-002: Unified error classification (CONNECTION_REFUSED, TIMEOUT, etc. - not opaque strings)
+  - I-003: DBC-first design (contracts ARE specification)
+  - I-004: SCOOP-centric concurrency (separate processors, not callbacks)
+  - I-005: simple_* ecosystem foundation (used by simple_grpc, simple_websocket, etc.)
+  - I-006: Zero-boilerplate server patterns (5-10 LOC vs 50-100)
+  - I-007: Phase 2 async without redesign (blocking API forward-compatible)
+
+### Step 6: RISKS.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\06-RISKS.md
+Content:
+  - Risk Register: 10 identified risks with likelihood, impact, mitigation
+  - Critical: RISK-010 (integration with downstream libraries breaking) - HIGH/HIGH
+  - Important: RISK-001 (ISE bugs) MEDIUM/HIGH, RISK-003 (timeouts) MEDIUM/MEDIUM
+  - Monitored: RISK-002 (scaling), RISK-004 (cross-platform), RISK-006 (SCOOP learning)
+  - Lower Priority: RISK-005 (performance), RISK-007 (error gaps), RISK-008 (contract burden)
+
+### Step 7: RECOMMENDATION.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\07-RECOMMENDATION.md
+Content:
+  - Action: BUILD
+  - Confidence: HIGH (90%)
+  - Rationale: Fills gap, leverages ISE net, foundation for ecosystem
+  - Phase 1 Timeline: 4-5 days (simple_net v1.0 MVP: TCP client/server, IPv4, Windows, blocking, full DBC, SCOOP)
+  - Phase 2 Track A: Consumer refactoring (2-3 days each: simple_smtp v2.0, simple_cache v2.0 to use simple_net)
+  - Phase 2 Track B: Feature extensions (non-blocking, IPv6, Unix sockets, pooling, optimization)
+  - Design: Keep Phase 1 tight and focused; refactor consumers AFTER simple_net v1.0 ships and proves stable
+
+### Step 8: REFERENCES.md
+Status: ✅ COMPLETE
+File: D:\prod\simple_net\.eiffel-workflow\research\REFERENCES.md
+Content:
+  - ISE net.ecf analysis: 5 core classes, 2,000+ LOC examined
+  - Ecosystem libraries: 5 examined (smtp, cache, http, websocket, plus patterns)
+  - Mainstream APIs: Python, Go, Java socket conventions
+  - Design patterns: Error handling, concurrency, async approaches
+  - Insights captured: 6 key findings (boilerplate real, naming matters, etc.)
+
+---
+
+## Research Quality Metrics
+
+Scope: ✅ Problem clearly stated, boundaries defined
+Landscape: ✅ 5+ alternatives researched with documentation URLs
+Requirements: ✅ 15 functional, 12 non-functional, clear acceptance criteria
+Decisions: ✅ 9 decisions with options evaluated and rationale recorded
+Innovations: ✅ 7 differentiators clearly stated
+Risks: ✅ 10 risks identified with likelihood/impact/mitigation/contingency
+Recommendation: ✅ Clear BUILD recommendation with 90% confidence
+References: ✅ 8+ sources cited with actual files examined
+
+---
+
+## Key Research Findings
+
+Finding 1: **Boilerplate Gap is Real**
+  - ISE net.ecf: 50-100 LOC for typical client/server
+  - Python/Go: 3-5 LOC for same functionality
+  - simple_net targets: 5-10 LOC (significant improvement)
+
+Finding 2: **Naming is Barrier**
+  - ISE: NETWORK_STREAM_SOCKET, INET_ADDRESS, SOCKET_POLLER (academic)
+  - Python/Go: socket, connect, send, receive (intuitive)
+  - Mainstream devs expect Python-like naming
+
+Finding 3: **Error Classification Needed**
+  - ISE: Opaque was_error boolean + socket_error string
+  - simple_net: Classified ERROR_TYPE enum (CONNECTION_REFUSED, TIMEOUT, etc.)
+  - Enables smart retry logic, automated handling
+
+Finding 4: **DBC is Differentiator**
+  - ISE net: Minimal contracts
+  - simple_net: Full pre+post+inv+MML contracts
+  - Contracts become executable specification
+
+Finding 5: **SCOOP is Best Fit**
+  - Not callbacks (SOCKET_POLLER is awkward)
+  - Not async-await (not Eiffel idiom)
+  - SCOOP processors per connection (race-free by design)
+
+Finding 6: **Ecosystem Multiplier**
+  - simple_net enables: simple_grpc (gRPC protocol), simple_websocket (WebSocket protocol)
+  - Foundation for future protocols
+  - One library unifies socket handling across ecosystem
+
+---
+
+## Recommendation Confidence Breakdown
+
+| Criterion | Confidence | Evidence |
+|-----------|-----------|----------|
+| Problem validity | 95% | Boilerplate patterns in 3+ libraries, 50-100 LOC confirmed |
+| Solution soundness | 90% | Architecture follows proven patterns (ISE net + wrapper) |
+| Design decisions | 90% | All 9 decisions have clear rationale, options evaluated |
+| Timeline estimate | 85% | 4-5 days based on similar library implementations |
+| Risk management | 85% | 10 risks identified, mitigations documented |
+| Ecosystem value | 95% | Foundation for 3+ libraries (simple_grpc, simple_websocket) |
+| **Overall Confidence** | **90%** | High confidence in BUILD recommendation |
+
+---
+
+## Next Steps
+
+### Phase 1: simple_net Library (Days 1-5)
+
+#### Immediate (Day 1)
+
+Proceed to specification phase:
+1. Run `/eiffel.spec d:\prod\simple_net` to transform research into design
+2. Output: 8-step specification (01-PARSED-REQUIREMENTS through 08-VALIDATION)
+3. Expected timeline: 1-2 days for specification
+
+#### Following (Week 1)
+
+Execute specification workflow:
+1. `/eiffel.intent` - Capture refined intent from specification
+2. `/eiffel.contracts` - Generate class skeletons with full DBC
+3. `/eiffel.review` - Adversarial review chain (Ollama → Claude → Grok → Gemini)
+4. `/eiffel.tasks` - Break into implementation tasks
+
+#### Implementation (Week 1-2)
+
+1. `/eiffel.implement` - Write feature bodies (keep contracts frozen)
+2. `/eiffel.verify` - Generate comprehensive test suite
+3. `/eiffel.harden` - Adversarial testing and edge cases
+4. `/eiffel.ship` - Production release documentation and binaries
+
+**Phase 1 Deliverable:** simple_net v1.0.0 (TCP client/server, IPv4, Windows, blocking, 100% DBC, SCOOP, zero warnings)
+
+### Phase 2: Consumer Refactoring & Features (Weeks 2-3+)
+
+#### Phase 2A: Consumer Library Updates (2-3 days each)
+
+After simple_net v1.0 ships:
+1. **simple_smtp v2.0 Refactoring** (2-3 days)
+   - Replace direct NETWORK_STREAM_SOCKET with CLIENT_SOCKET
+   - Use simple_net's error classification
+   - Reduce boilerplate
+   - Release as v2.0
+
+2. **simple_cache v2.0 Refactoring** (2-3 days)
+   - Replace direct NETWORK_STREAM_SOCKET with CLIENT_SOCKET
+   - Simplify Redis connection handling
+   - Use simple_net's error handling
+   - Release as v2.0
+
+#### Phase 2B: Feature Extensions (Parallel)
+
+- Non-blocking/async API
+- IPv6 support
+- Unix domain sockets (Linux/macOS)
+- Connection pooling framework
+- Per-operation timeout granularity
+- Performance optimization
+
+**Design Principle:** Phase 1 ships clean; Phase 2 consumers adopt once stable, features enhance in parallel
+
+---
+
+## Research Evidence Summary
+
+Files Created: 8 (01-SCOPE, 02-LANDSCAPE, 03-REQUIREMENTS, 04-DECISIONS, 05-INNOVATIONS, 06-RISKS, 07-RECOMMENDATION, REFERENCES)
+Total Size: ~45 KB
+Research Duration: Single focused session
+Recommendation: BUILD with 90% confidence
+Ready for Specification: YES
+
+---
+
+## Approval Status
+
+Research Phase: ✅ COMPLETE
+Recommendation: ✅ BUILD (simple_net TCP socket abstraction)
+Confidence Level: ✅ HIGH (90%)
+Phase 1 Scope: ✅ DEFINED (TCP client/server, IPv4, Windows, blocking, DBC, SCOOP)
+Phase 2 Scope: ✅ DEFINED (Phase 2A: consumer refactoring; Phase 2B: features)
+Ready for Specification Phase: ✅ YES
+Ready for Implementation: ✅ YES (pending specification and intent capture)
+
+---
+
+Status: RESEARCH PHASE COMPLETE - TWO-PHASE APPROACH DOCUMENTED
+Date Completed: January 28, 2026
+
+Phase 1: simple_net v1.0 (4-5 days)
+Next Command: /eiffel.spec d:\prod\simple_net
+Estimated Timeline: 1-2 days specification + 4-5 days implementation = 5-7 days Phase 1
+
+Phase 2: Consumer refactoring (2-3 days each library) + Feature extensions (parallel)
+Triggers: After Phase 1 ships and v1.0 is validated
+
+---
+
+End of pre-phase-research.txt

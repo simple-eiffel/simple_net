@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference - simple_net</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>simple_net</h1>
+        <p class="tagline">Complete API Reference</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="quick.html">Quick API</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_net">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="simple_net">
+            <h2>SIMPLE_NET (Facade)</h2>
+            <p>Convenience facade providing factory methods for creating sockets and addresses.</p>
+
+            <h3>Factories</h3>
+            <table>
+                <tr>
+                    <th>Method</th>
+                    <th>Returns</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>new_client_for_host_port(host: STRING; port: INTEGER)</code></td>
+                    <td><code>CLIENT_SOCKET</code></td>
+                    <td>Create client for host:port</td>
+                </tr>
+                <tr>
+                    <td><code>new_client_for_address(addr: ADDRESS)</code></td>
+                    <td><code>CLIENT_SOCKET</code></td>
+                    <td>Create client for ADDRESS</td>
+                </tr>
+                <tr>
+                    <td><code>new_server_for_port(port: INTEGER)</code></td>
+                    <td><code>SERVER_SOCKET</code></td>
+                    <td>Create server for port</td>
+                </tr>
+                <tr>
+                    <td><code>new_server_for_address(addr: ADDRESS)</code></td>
+                    <td><code>SERVER_SOCKET</code></td>
+                    <td>Create server for ADDRESS</td>
+                </tr>
+                <tr>
+                    <td><code>new_address_for_host_port(host: STRING; port: INTEGER)</code></td>
+                    <td><code>ADDRESS</code></td>
+                    <td>Create ADDRESS for host:port</td>
+                </tr>
+                <tr>
+                    <td><code>new_address_for_localhost_port(port: INTEGER)</code></td>
+                    <td><code>ADDRESS</code></td>
+                    <td>Create loopback ADDRESS</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="client_socket">
+            <h2>CLIENT_SOCKET</h2>
+            <p>TCP client socket for connecting to servers and exchanging data.</p>
+
+            <h3>Creation</h3>
+            <table>
+                <tr>
+                    <th>Method</th>
+                    <th>Parameters</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>make_for_host_port</code></td>
+                    <td><code>host: STRING; port: INTEGER</code></td>
+                    <td>Create client for host:port</td>
+                </tr>
+                <tr>
+                    <td><code>make_for_address</code></td>
+                    <td><code>addr: ADDRESS</code></td>
+                    <td>Create client for ADDRESS</td>
+                </tr>
+            </table>
+
+            <h3>Commands</h3>
+            <table>
+                <tr>
+                    <th>Method</th>
+                    <th>Returns</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>connect</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Initiate connection (true=success)</td>
+                </tr>
+                <tr>
+                    <td><code>send(data: ARRAY [NATURAL_8])</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Send all bytes (full-send guarantee)</td>
+                </tr>
+                <tr>
+                    <td><code>send_string(msg: STRING)</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Send UTF-8 string</td>
+                </tr>
+                <tr>
+                    <td><code>receive(max_bytes: INTEGER)</code></td>
+                    <td><code>ARRAY [NATURAL_8]</code></td>
+                    <td>Receive up to max_bytes (empty on EOF)</td>
+                </tr>
+                <tr>
+                    <td><code>receive_string(max_bytes: INTEGER)</code></td>
+                    <td><code>STRING</code></td>
+                    <td>Receive as UTF-8 string</td>
+                </tr>
+                <tr>
+                    <td><code>close</code></td>
+                    <td>--</td>
+                    <td>Close connection gracefully</td>
+                </tr>
+                <tr>
+                    <td><code>set_timeout(seconds: REAL)</code></td>
+                    <td>--</td>
+                    <td>Set timeout for operations</td>
+                </tr>
+            </table>
+
+            <h3>Queries</h3>
+            <table>
+                <tr>
+                    <th>Query</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>is_connected</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is socket connected?</td>
+                </tr>
+                <tr>
+                    <td><code>is_closed</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is socket closed?</td>
+                </tr>
+                <tr>
+                    <td><code>is_error</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is socket in error state?</td>
+                </tr>
+                <tr>
+                    <td><code>error_classification</code></td>
+                    <td><code>ERROR_TYPE</code></td>
+                    <td>Get error details (requires is_error)</td>
+                </tr>
+                <tr>
+                    <td><code>last_error_string</code></td>
+                    <td><code>STRING</code></td>
+                    <td>Human-readable error (requires is_error)</td>
+                </tr>
+                <tr>
+                    <td><code>is_at_end_of_stream</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Did peer close connection?</td>
+                </tr>
+                <tr>
+                    <td><code>bytes_sent</code></td>
+                    <td><code>INTEGER</code></td>
+                    <td>Total bytes sent (cumulative)</td>
+                </tr>
+                <tr>
+                    <td><code>bytes_received</code></td>
+                    <td><code>INTEGER</code></td>
+                    <td>Total bytes received (cumulative)</td>
+                </tr>
+                <tr>
+                    <td><code>timeout</code></td>
+                    <td><code>REAL</code></td>
+                    <td>Current timeout in seconds</td>
+                </tr>
+                <tr>
+                    <td><code>remote_address</code></td>
+                    <td><code>ADDRESS</code></td>
+                    <td>Remote server address</td>
+                </tr>
+                <tr>
+                    <td><code>local_address</code></td>
+                    <td><code>ADDRESS</code></td>
+                    <td>Local endpoint (after connect)</td>
+                </tr>
+            </table>
+
+            <h3>Invariants</h3>
+            <ul>
+                <li><code>is_connected implies not is_error</code></li>
+                <li><code>is_connected implies not is_closed</code></li>
+                <li><code>is_error implies not is_closed</code></li>
+                <li><code>bytes_sent >= 0 and bytes_received >= 0</code></li>
+                <li><code>timeout > 0.0</code></li>
+            </ul>
+        </section>
+
+        <section id="server_socket">
+            <h2>SERVER_SOCKET</h2>
+            <p>TCP server socket for accepting inbound connections.</p>
+
+            <h3>Creation</h3>
+            <table>
+                <tr>
+                    <th>Method</th>
+                    <th>Parameters</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>make_for_port</code></td>
+                    <td><code>port: INTEGER</code></td>
+                    <td>Create server listening on port (0.0.0.0:port)</td>
+                </tr>
+                <tr>
+                    <td><code>make_for_address</code></td>
+                    <td><code>addr: ADDRESS</code></td>
+                    <td>Create server listening on ADDRESS</td>
+                </tr>
+            </table>
+
+            <h3>Commands</h3>
+            <table>
+                <tr>
+                    <th>Method</th>
+                    <th>Returns</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>listen(backlog: INTEGER)</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Start listening (true=success)</td>
+                </tr>
+                <tr>
+                    <td><code>accept</code></td>
+                    <td><code>detachable CONNECTION</code></td>
+                    <td>Accept next connection (Void on timeout)</td>
+                </tr>
+                <tr>
+                    <td><code>close</code></td>
+                    <td>--</td>
+                    <td>Stop listening and cleanup</td>
+                </tr>
+                <tr>
+                    <td><code>set_timeout(seconds: REAL)</code></td>
+                    <td>--</td>
+                    <td>Set accept timeout</td>
+                </tr>
+            </table>
+
+            <h3>Queries</h3>
+            <table>
+                <tr>
+                    <th>Query</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>is_listening</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is server actively listening?</td>
+                </tr>
+                <tr>
+                    <td><code>is_closed</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Has server been closed?</td>
+                </tr>
+                <tr>
+                    <td><code>is_error</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is server in error state?</td>
+                </tr>
+                <tr>
+                    <td><code>error_classification</code></td>
+                    <td><code>ERROR_TYPE</code></td>
+                    <td>Get error details (requires is_error)</td>
+                </tr>
+                <tr>
+                    <td><code>last_error_string</code></td>
+                    <td><code>STRING</code></td>
+                    <td>Human-readable error (requires is_error)</td>
+                </tr>
+                <tr>
+                    <td><code>operation_timed_out</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Did last accept timeout?</td>
+                </tr>
+                <tr>
+                    <td><code>backlog</code></td>
+                    <td><code>INTEGER</code></td>
+                    <td>Connection queue depth</td>
+                </tr>
+                <tr>
+                    <td><code>connection_count</code></td>
+                    <td><code>INTEGER</code></td>
+                    <td>Total connections accepted (lifetime)</td>
+                </tr>
+                <tr>
+                    <td><code>timeout</code></td>
+                    <td><code>REAL</code></td>
+                    <td>Current timeout in seconds</td>
+                </tr>
+                <tr>
+                    <td><code>local_address</code></td>
+                    <td><code>ADDRESS</code></td>
+                    <td>Local address server listening on</td>
+                </tr>
+            </table>
+
+            <h3>Invariants</h3>
+            <ul>
+                <li><code>is_listening implies not is_error</code></li>
+                <li><code>is_listening implies not is_closed</code></li>
+                <li><code>is_error implies not is_closed</code></li>
+                <li><code>backlog >= 0</code></li>
+                <li><code>connection_count >= 0</code></li>
+                <li><code>timeout > 0.0</code></li>
+            </ul>
+        </section>
+
+        <section id="address">
+            <h2>ADDRESS</h2>
+            <p>Immutable network endpoint (host:port) value object.</p>
+
+            <h3>Creation</h3>
+            <table>
+                <tr>
+                    <th>Method</th>
+                    <th>Parameters</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>make_for_host_port</code></td>
+                    <td><code>host: STRING; port: INTEGER</code></td>
+                    <td>Create address for host:port</td>
+                </tr>
+                <tr>
+                    <td><code>make_for_localhost_port</code></td>
+                    <td><code>port: INTEGER</code></td>
+                    <td>Create loopback address (127.0.0.1:port)</td>
+                </tr>
+            </table>
+
+            <h3>Queries</h3>
+            <table>
+                <tr>
+                    <th>Query</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>host</code></td>
+                    <td><code>STRING</code></td>
+                    <td>Hostname or IP address</td>
+                </tr>
+                <tr>
+                    <td><code>port</code></td>
+                    <td><code>INTEGER</code></td>
+                    <td>Port number (1-65535)</td>
+                </tr>
+                <tr>
+                    <td><code>as_string</code></td>
+                    <td><code>STRING</code></td>
+                    <td>Format: "host:port"</td>
+                </tr>
+                <tr>
+                    <td><code>is_ipv4_address</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is host IPv4 (dotted quad)?</td>
+                </tr>
+                <tr>
+                    <td><code>is_loopback</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is loopback (127.0.0.1 or localhost)?</td>
+                </tr>
+            </table>
+
+            <h3>Invariants</h3>
+            <ul>
+                <li><code>host not empty</code></li>
+                <li><code>port >= 1 and port <= 65535</code></li>
+            </ul>
+        </section>
+
+        <section id="error_type">
+            <h2>ERROR_TYPE</h2>
+            <p>Semantic classification of network errors with Linux/Windows code mapping.</p>
+
+            <h3>Creation</h3>
+            <table>
+                <tr>
+                    <th>Method</th>
+                    <th>Parameters</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>make</code></td>
+                    <td><code>code: INTEGER</code></td>
+                    <td>Create error for code (0=no error)</td>
+                </tr>
+            </table>
+
+            <h3>Queries</h3>
+            <table>
+                <tr>
+                    <th>Query</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+                <tr>
+                    <td><code>code</code></td>
+                    <td><code>INTEGER</code></td>
+                    <td>Error code (0=no error, -1=generic timeout)</td>
+                </tr>
+                <tr>
+                    <td><code>is_no_error</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Is code 0 (no error)?</td>
+                </tr>
+                <tr>
+                    <td><code>is_connection_refused</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Server refused connection (111/10061)</td>
+                </tr>
+                <tr>
+                    <td><code>is_connection_timeout</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Connection timed out (110/10060)</td>
+                </tr>
+                <tr>
+                    <td><code>is_connection_reset</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Connection reset (104/10054)</td>
+                </tr>
+                <tr>
+                    <td><code>is_read_error</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Failed to read from socket</td>
+                </tr>
+                <tr>
+                    <td><code>is_write_error</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Failed to write to socket</td>
+                </tr>
+                <tr>
+                    <td><code>is_bind_error</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Address already in use (98/10048)</td>
+                </tr>
+                <tr>
+                    <td><code>is_address_not_available</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Address not available (99/10049)</td>
+                </tr>
+                <tr>
+                    <td><code>is_timeout</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Generic timeout (code -1)</td>
+                </tr>
+                <tr>
+                    <td><code>is_retriable</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Can retry operation</td>
+                </tr>
+                <tr>
+                    <td><code>is_fatal</code></td>
+                    <td><code>BOOLEAN</code></td>
+                    <td>Cannot recover</td>
+                </tr>
+                <tr>
+                    <td><code>to_string</code></td>
+                    <td><code>STRING</code></td>
+                    <td>Human-readable error description</td>
+                </tr>
+            </table>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 Simple Eiffel Contributors. MIT License.</p>
+            <p><a href="https://github.com/simple-eiffel/simple_net">GitHub Repository</a></p>
+        </footer>
+    </main>
+</body>
+</html>

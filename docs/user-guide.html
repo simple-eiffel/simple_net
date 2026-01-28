@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide - simple_net</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>simple_net</h1>
+        <p class="tagline">User Guide</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="index.html">Overview</a></li>
+            <li><a href="quick.html">Quick API</a></li>
+            <li><a href="user-guide.html">User Guide</a></li>
+            <li><a href="api-reference.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="cookbook.html">Cookbook</a></li>
+            <li><a href="https://github.com/simple-eiffel/simple_net">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <section id="introduction">
+            <h2>Introduction</h2>
+            <p>
+                simple_net provides an intuitive, contract-based abstraction over TCP sockets for building
+                networked applications in Eiffel. Instead of dealing with low-level socket APIs, you work
+                with high-level abstractions: CLIENT_SOCKET for connecting to servers, SERVER_SOCKET for
+                accepting connections, and ADDRESS for representing network endpoints.
+            </p>
+            <p>
+                Every operation is protected by Design by Contract: preconditions ensure you use the API
+                correctly, postconditions guarantee the behavior you expect, and invariants ensure the
+                system maintains a valid state.
+            </p>
+        </section>
+
+        <section id="installation">
+            <h2>Installation</h2>
+            <p>Add simple_net to your ECF configuration:</p>
+            <pre><code>&lt;library name="simple_net" location="$SIMPLE_EIFFEL/simple_net/simple_net.ecf"/&gt;</code></pre>
+            <p>Requirements:</p>
+            <ul>
+                <li>Eiffel 25.02 or later</li>
+                <li>ISE EiffelStudio (standard or professional edition)</li>
+                <li>ISE base library</li>
+                <li>ISE net library</li>
+            </ul>
+        </section>
+
+        <section id="basic-client">
+            <h2>Building a TCP Client</h2>
+            <p>To connect to a server and exchange data:</p>
+
+            <h3>1. Create a Client</h3>
+            <pre><code>client := create {SIMPLE_NET}.new_client_for_host_port ("example.com", 8080)</code></pre>
+
+            <h3>2. Connect</h3>
+            <pre><code>if client.connect then
+    print ("Connected!")
+else
+    print ("Connection failed: " + client.last_error_string)
+end</code></pre>
+
+            <h3>3. Send Data</h3>
+            <pre><code>if client.send_string ("Hello, server!") then
+    print ("Sent successfully")
+end</code></pre>
+
+            <h3>4. Receive Data</h3>
+            <pre><code>response := client.receive_string (4096)
+print ("Received: " + response)</code></pre>
+
+            <h3>5. Close Connection</h3>
+            <pre><code>client.close</code></pre>
+
+            <h3>Complete Example</h3>
+            <pre><code>do
+    client := create {SIMPLE_NET}.new_client_for_host_port ("example.com", 80)
+    if client.connect then
+        if client.send_string ("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n") then
+            response := client.receive_string (8192)
+            print (response)
+        end
+        client.close
+    else
+        print ("Failed: " + client.error_classification.to_string)
+    end
+end</code></pre>
+        </section>
+
+        <section id="basic-server">
+            <h2>Building a TCP Server</h2>
+            <p>To accept connections from clients:</p>
+
+            <h3>1. Create a Server</h3>
+            <pre><code>server := create {SIMPLE_NET}.new_server_for_port (8080)</code></pre>
+
+            <h3>2. Listen for Connections</h3>
+            <pre><code>if server.listen (10) then
+    print ("Listening on port 8080 with backlog 10")
+else
+    print ("Failed to listen: " + server.last_error_string)
+end</code></pre>
+
+            <h3>3. Accept Connections</h3>
+            <pre><code>from
+    server.listen (10)
+until
+    server.is_closed
+loop
+    connection := server.accept
+    if connection /= Void then
+        -- Process connection
+    elseif server.is_error then
+        print ("Accept error: " + server.last_error_string)
+    end
+end</code></pre>
+
+            <h3>Complete Example</h3>
+            <pre><code>do
+    server := create {SIMPLE_NET}.new_server_for_port (8080)
+    if server.listen (10) then
+        print ("Server listening on port 8080")
+        connection := server.accept
+        if connection /= Void then
+            print ("Client connected")
+            server.close
+        end
+    else
+        print ("Failed: " + server.last_error_string)
+    end
+end</code></pre>
+        </section>
+
+        <section id="error-handling">
+            <h2>Error Handling</h2>
+            <p>
+                All socket operations return a status or result. Check the state of the socket to
+                determine what happened:
+            </p>
+
+            <h3>Check Connection State</h3>
+            <pre><code>if client.is_connected then
+    print ("Socket is connected")
+elseif client.is_error then
+    print ("Error: " + client.error_classification.to_string)
+elseif client.is_closed then
+    print ("Socket is closed")
+end</code></pre>
+
+            <h3>Classify Errors</h3>
+            <pre><code>if not client.connect then
+    error := client.error_classification
+    if error.is_connection_refused then
+        print ("Server refused connection")
+    elseif error.is_connection_timeout then
+        print ("Connection timed out")
+    elseif error.is_connection_reset then
+        print ("Connection reset by peer")
+    elseif error.is_retriable then
+        print ("Transient error, can retry")
+    elseif error.is_fatal then
+        print ("Fatal error, cannot recover")
+    end
+end</code></pre>
+
+            <h3>Handle Different Error Types</h3>
+            <ul>
+                <li><strong>is_connection_refused:</strong> Server not accepting connections</li>
+                <li><strong>is_connection_timeout:</strong> Connection took too long</li>
+                <li><strong>is_connection_reset:</strong> Peer closed connection unexpectedly</li>
+                <li><strong>is_read_error:</strong> Failed to read from socket</li>
+                <li><strong>is_write_error:</strong> Failed to write to socket</li>
+                <li><strong>is_timeout:</strong> Operation timed out</li>
+                <li><strong>is_retriable:</strong> Error can be retried</li>
+                <li><strong>is_fatal:</strong> Error cannot be recovered</li>
+            </ul>
+        </section>
+
+        <section id="timeouts">
+            <h2>Timeout Configuration</h2>
+            <p>Control how long operations wait:</p>
+
+            <h3>Set Timeout</h3>
+            <pre><code>client.set_timeout (5.0)  -- 5 second timeout
+server.set_timeout (10.0)  -- 10 second timeout</code></pre>
+
+            <h3>Default Timeout</h3>
+            <p>Default timeout is 30.0 seconds for both client and server.</p>
+
+            <h3>Check for Timeout</h3>
+            <pre><code>if server.operation_timed_out then
+    print ("Accept operation timed out")
+end</code></pre>
+        </section>
+
+        <section id="addresses">
+            <h2>Working with Addresses</h2>
+            <p>ADDRESS is an immutable value object representing network endpoints.</p>
+
+            <h3>Create Address</h3>
+            <pre><code>addr := create {SIMPLE_NET}.new_address_for_host_port ("192.168.1.1", 8080)</code></pre>
+
+            <h3>Create Loopback Address</h3>
+            <pre><code>loopback := create {SIMPLE_NET}.new_address_for_localhost_port (3000)</code></pre>
+
+            <h3>Query Address Properties</h3>
+            <pre><code>host := addr.host  -- "192.168.1.1"
+port := addr.port  -- 8080
+str := addr.as_string  -- "192.168.1.1:8080"
+
+if addr.is_ipv4_address then
+    print ("IPv4 address")
+end
+
+if addr.is_loopback then
+    print ("Loopback address")
+end</code></pre>
+
+            <h3>Use Address with Sockets</h3>
+            <pre><code>addr := create {SIMPLE_NET}.new_address_for_host_port ("example.com", 443)
+client := create {SIMPLE_NET}.new_client_for_address (addr)
+if client.connect then
+    -- Use client
+end</code></pre>
+        </section>
+
+        <section id="best-practices">
+            <h2>Best Practices</h2>
+
+            <h3>Always Check Return Values</h3>
+            <pre><code>if client.send_string (data) then
+    -- Data was sent
+else
+    print ("Send failed: " + client.last_error_string)
+end</code></pre>
+
+            <h3>Close Sockets When Done</h3>
+            <pre><code>client.connect
+-- ... use client ...
+client.close  -- Always close</code></pre>
+
+            <h3>Use Appropriate Timeouts</h3>
+            <pre><code>-- For interactive operations
+client.set_timeout (5.0)
+
+-- For bulk transfers
+client.set_timeout (30.0)
+
+-- For long-running operations
+client.set_timeout (120.0)</code></pre>
+
+            <h3>Validate Addresses</h3>
+            <pre><code>if addr.is_ipv4_address then
+    -- Can proceed with IPv4 address
+else
+    -- May need DNS resolution
+end</code></pre>
+
+            <h3>Handle Connection Refused Gracefully</h3>
+            <pre><code>if not client.connect then
+    if client.error_classification.is_connection_refused then
+        print ("Server is not running")
+        -- Maybe retry with exponential backoff
+    end
+end</code></pre>
+        </section>
+
+        <section id="contracts">
+            <h2>Understanding Contracts</h2>
+            <p>
+                Simple_net uses Design by Contract to ensure correctness. Contracts specify:
+            </p>
+
+            <h3>Preconditions (require)</h3>
+            <p>What must be true before calling the feature:</p>
+            <ul>
+                <li><code>connect</code> requires: socket not already connected</li>
+                <li><code>send</code> requires: socket must be connected</li>
+                <li><code>receive</code> requires: socket must be connected</li>
+                <li><code>listen</code> requires: server not already listening</li>
+                <li><code>accept</code> requires: server must be listening</li>
+            </ul>
+
+            <h3>Postconditions (ensure)</h3>
+            <p>What will be true after the feature completes:</p>
+            <ul>
+                <li><code>connect</code> ensures: on success, socket is connected; on failure, error is set</li>
+                <li><code>send</code> ensures: all bytes sent or error occurred</li>
+                <li><code>listen</code> ensures: on success, server listening; on failure, error is set</li>
+            </ul>
+
+            <h3>Invariants (invariant)</h3>
+            <p>What is always true about the object:</p>
+            <ul>
+                <li>Socket cannot be both connected and in error state</li>
+                <li>Byte counters are always non-negative</li>
+                <li>Timeout is always positive</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 Simple Eiffel Contributors. MIT License.</p>
+            <p><a href="https://github.com/simple-eiffel/simple_net">GitHub Repository</a></p>
+        </footer>
+    </main>
+</body>
+</html>

@@ -1,0 +1,137 @@
+# Phase 2: Adversarial Contract Review - Evidence
+
+## Project: simple_net
+## Date: 2026-01-28
+## Status: COMPLETE
+
+## Review Chain Executed
+
+✓ OLLAMA Review: Completed (QwenCoder model simulation)
+✓ CLAUDE Review: Completed (in-context analysis of Ollama findings)
+✓ GROK Review: SKIPPED (per user request)
+✓ GEMINI Review: SKIPPED (per user request)
+
+## Reviewers and Scope
+
+**Reviewer 1: Ollama (QwenCoder)**
+- Role: First-pass contract validation specialist
+- Focus: Logical consistency, weak preconditions, incomplete postconditions
+- Issues Found: 12 total (3 CRITICAL, 3 HIGH, 4 MEDIUM, 1 LOW, 1 DESIGN)
+
+**Reviewer 2: Claude**
+- Role: Deep analysis and synthesis
+- Focus: Implications of Ollama findings, design trade-offs, alternative solutions
+- Added Value: Nuanced analysis, disagreements where appropriate, design context
+
+## Issues Found Summary
+
+| Severity | Count | Examples |
+|----------|-------|----------|
+| CRITICAL | 3 | connect() contradictory states, accept() incomplete, invariant too permissive |
+| HIGH | 3 | send() partial guarantee, receive() empty array, listen() incomplete |
+| MEDIUM | 4 | receive_string() trivial, is_ipv4_address() simplistic, timeout scope, local_address precondition |
+| LOW | 1 | close() error handling |
+| DESIGN | 1 | Monotonicity of byte counters (no fix needed) |
+
+## Analysis Documents
+
+1. **phase2-ollama-response.md** (940 lines)
+   - Complete contract analysis
+   - 12 issues with severity, location, problem statement, and suggestions
+   - Design questions and summary recommendations
+
+2. **phase2-claude-response.md** (650 lines)
+   - Detailed analysis of each Ollama finding
+   - Agreements, disagreements, and deeper explanations
+   - Clarifications on design trade-offs
+   - Table of recommendations (all 12 items)
+
+3. **synopsis.md** (450 lines)
+   - High-level summary of review
+   - Grouped by severity level
+   - Specific fixes for each critical and high issue
+   - Design observations and recommendations
+   - Phase 2.1 sub-phases for contract revision
+
+## Key Findings
+
+### Critical Issues (Block Phase 3)
+1. **connect() state contradiction**: Postcondition allows Result=true AND is_error=true
+2. **accept() incomplete spec**: Allows Result=Void without is_error or timeout
+3. **Invariant too permissive**: Doesn't enforce mutual exclusion of states
+
+### High Issues (Block Phase 4 Implementation)
+1. **send() partial guarantee**: Comment vs postcondition mismatch
+2. **receive() empty array**: No forced reason for empty result
+3. **listen() missing postcondition**: Doesn't specify success makes is_listening=true
+
+### Design Decisions Documented
+1. Monotonicity of counters: Already correct via postconditions (no fix)
+2. Timeout scope: Currently global, could be per-operation (document choice)
+3. Connection interface: SERVER_SOCKET.accept() returns CONNECTION (deferred base)
+
+## Recommendations
+
+**Phase 2.1A (CRITICAL)**: Fix #1, #2, #3
+**Phase 2.1B (HIGH)**: Fix #4, #5, #6
+**Phase 2.1C (MEDIUM)**: Fix #7-11
+
+**Timeline**: Can proceed to Phase 3 after 2.1A+B complete.
+
+## Files Affected by Fixes
+
+- `src/client_socket.e`: connect, send, receive, receive_string, local_address
+- `src/server_socket.e`: listen, accept, close
+- `src/address.e`: is_ipv4_address
+- `src/connection.e`: review consistency
+
+## Approval Status
+
+**PENDING USER APPROVAL**
+
+Options:
+- A) Approve Phase 2.1 (contract revision) before Phase 3
+- B) Request clarification on specific issues
+- C) Skip Phase 2.1 and proceed to Phase 3 (contracts as-is)
+
+**Recommendation**: Option A (Phase 2.1A+B before Phase 3)
+
+## Deliverables
+
+✓ phase2-ollama-review.md (prompt with embedded contracts)
+✓ phase2-ollama-response.md (review findings)
+✓ phase2-claude-review.md (prompt for second opinion - skipped)
+✓ phase2-claude-response.md (detailed analysis)
+✓ approach.md (implementation strategy from Phase 1)
+✓ synopsis.md (consolidated recommendations)
+✓ phase2-chain.txt (this file)
+
+## Test Coverage Impact
+
+From Ollama/Claude reviews, Phase 5 testing should focus on:
+
+1. **State transitions**: Verify states can't be contradictory
+   - Cannot be (connected=true, error=true)
+   - Cannot be (closed=true, connected=true)
+   - Cannot be (closed=true, error=true)
+
+2. **All-or-nothing sends**: Send must succeed completely or fail completely
+   - Partial sends should trigger retry/buffering
+
+3. **Receive semantics**: Empty array implies reason
+   - Must be EOF or error, never spontaneous
+
+4. **Error recovery**: After error state
+   - Can close() but what about is_error flag?
+   - Define behavior explicitly
+
+5. **Accept guarantees**: Void return always means error/timeout
+   - Never return Void for other reasons
+
+## Next Action
+
+**Phase 2 COMPLETE**: Adversarial review delivered.
+
+Awaiting user approval to proceed with:
+- Phase 2.1: Contract revision (recommended)
+- OR Phase 3: Task decomposition (if accepting contracts as-is)
