@@ -193,7 +193,7 @@ feature {NONE} -- Helper Methods (To Be Implemented)
 		require
 			port_valid: a_port >= 1 and a_port <= 65535
 		do
-			create Result.make_for_localhost_port (a_port)
+			create Result.make_for_port (a_port)
 			-- TODO: Call listen on Result
 		ensure
 			listening: Result.is_listening
@@ -204,7 +204,7 @@ feature {NONE} -- Helper Methods (To Be Implemented)
 		require
 			port_valid: a_port >= 1 and a_port <= 65535
 		do
-			create Result.make_for_localhost_port (a_port)
+			create Result.make_for_host_port ("127.0.0.1", a_port)
 			-- TODO: Call connect on Result
 		ensure
 			connected: Result.is_connected
