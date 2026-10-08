@@ -2,6 +2,49 @@
 
 All notable changes to simple_net will be documented in this file.
 
+## [1.2.0] - 2026-10-08
+
+### Fixed
+
+- **The sockets were stubs.** `CLIENT_SOCKET.connect` returned True without connecting, `send`
+  only counted bytes, `receive` always returned empty (EOF); `SERVER_SOCKET.listen` succeeded without
+  binding and `accept` always failed; `CONNECTION` did no I/O. All three now use Winsock 2 through
+  inline C (`NET_SOCKET_API`, linking `ws2_32`): IPv4 via getaddrinfo (literals and names), connect
+  with a timeout (failure read from SO_ERROR, so a refusal reports 10061, not a timeout), send-all,
+  receive up to N, accept with a timeout, graceful close (FIN first). Every external that can wait is
+  `blocking`, and data crosses into C only through malloc'd buffers, because the GC may move objects
+  during a blocking call.
+- **Contracts were never checked.** The ECF used `<setting name="precondition" .../>`, which is not
+  an assertion switch (the compiler only warned VD80), so contracts were off and several tests
+  asserted that preconditions are *not* enforced. Both targets now use
+  `<option><assertions .../></option>`, and those tests now assert the violation is raised.
+- Contracts that were provably wrong once checked: `is_error`'s postcondition `Result or is_connected`
+  (false for a new socket, which is neither) became `Result implies not is_connected`, likewise on
+  SERVER_SOCKET; `backlog`'s precondition was dropped (0 before `listen` is well-defined and the class
+  invariant reads it in every state); `local_address` built a port-0 ADDRESS against ADDRESS's own
+  precondition and now requires `has_local_address`.
+- Tests that connected to example.com:8080 (real Internet I/O, 30 s timeouts) or bound 0.0.0.0 now
+  use loopback servers on free ports.
+
+### Added
+
+- `CLIENT_SOCKET`/`CONNECTION.receive_exactly`, `last_error_code`, `CLIENT_SOCKET.operation_timed_out`,
+  `has_local_address`, `SERVER_SOCKET.last_error_code`; `ERROR_TYPE.is_host_not_found`,
+  `is_connection_aborted`.
+- `TEST_NETWORK_INTEGRATION` (was all `assert False` placeholders): round trips of zero-length, NUL,
+  all 256 byte values and 1 MiB; peer closing mid-receive; graceful close; refused (10061); receive,
+  receive_exactly and accept timeouts (10060); unroutable connect; host not found; port in use.
+
+### Changed
+
+- `send` / `send_string` accept empty data (no-op success). `close` may be called more than once.
+  Errors (including timeouts) are terminal for a socket: it is released; `close` clears `is_error`
+  but `last_error_code` stays readable.
+- `CONNECTION` is created only by `SERVER_SOCKET.accept` (`make_accepted`); the old public `make`
+  produced a connection with no socket.
+- Removed the ISE `net` library dependency and the unused `CLIENT_SOCKET_IMPL` / `SERVER_SOCKET_IMPL`
+  stubs. The library target sets `_WIN32_WINNT=0x0A00` (getaddrinfo, inet_ntop); clients inherit it.
+
 ## [1.1.0] - 2026-01-28
 
 ### Added

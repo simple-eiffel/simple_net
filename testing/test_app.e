@@ -23,6 +23,7 @@ feature {NONE} -- Initialization
 			create error_type_tests
 			create client_socket_tests
 			create server_socket_tests
+			create network_integration_tests
 			create scoop_consumer_tests
 			create scoop_concurrency_tests
 			create precondition_investigation_tests
@@ -34,6 +35,7 @@ feature {NONE} -- Initialization
 			run_error_type_tests
 			run_client_socket_tests
 			run_server_socket_tests
+			run_network_integration_tests
 			run_scoop_consumer_tests
 			run_scoop_concurrency_tests
 			run_precondition_investigation_tests
@@ -190,6 +192,27 @@ feature {NONE} -- Test Runners
 			run_test (agent server_socket_tests.test_port_over_65535_invalid, "test_port_over_65535_invalid")
 		end
 
+	run_network_integration_tests
+			-- Run TEST_NETWORK_INTEGRATION (real loopback TCP)
+		do
+			print ("%N=== TEST_NETWORK_INTEGRATION ===%N")
+			run_test (agent network_integration_tests.test_round_trip_zero_length, "test_round_trip_zero_length")
+			run_test (agent network_integration_tests.test_round_trip_nul_bytes, "test_round_trip_nul_bytes")
+			run_test (agent network_integration_tests.test_round_trip_all_byte_values, "test_round_trip_all_byte_values")
+			run_test (agent network_integration_tests.test_round_trip_one_megabyte, "test_round_trip_one_megabyte")
+			run_test (agent network_integration_tests.test_hostname_localhost, "test_hostname_localhost")
+			run_test (agent network_integration_tests.test_peer_closes_mid_receive, "test_peer_closes_mid_receive")
+			run_test (agent network_integration_tests.test_close_is_graceful, "test_close_is_graceful")
+			run_test (agent network_integration_tests.test_connection_refused, "test_connection_refused")
+			run_test (agent network_integration_tests.test_receive_timeout, "test_receive_timeout")
+			run_test (agent network_integration_tests.test_receive_exactly_timeout, "test_receive_exactly_timeout")
+			run_test (agent network_integration_tests.test_connect_timeout, "test_connect_timeout")
+			run_test (agent network_integration_tests.test_host_not_found, "test_host_not_found")
+			run_test (agent network_integration_tests.test_accept_timeout, "test_accept_timeout")
+			run_test (agent network_integration_tests.test_port_in_use, "test_port_in_use")
+			run_test (agent network_integration_tests.test_server_accepts_and_exchanges, "test_server_accepts_and_exchanges")
+		end
+
 	run_scoop_consumer_tests
 			-- Run TEST_SCOOP_CONSUMER
 		do
@@ -261,6 +284,7 @@ feature {NONE} -- Test Suite Instances
 	error_type_tests: TEST_ERROR_TYPE
 	client_socket_tests: TEST_CLIENT_SOCKET
 	server_socket_tests: TEST_SERVER_SOCKET
+	network_integration_tests: TEST_NETWORK_INTEGRATION
 	scoop_consumer_tests: TEST_SCOOP_CONSUMER
 	scoop_concurrency_tests: TEST_SCOOP_CONCURRENCY
 	precondition_investigation_tests: TEST_PRECONDITION_INVESTIGATION
@@ -286,7 +310,14 @@ feature {NONE} -- Test Count Tracking
 				passed := passed + 1
 			end
 		rescue
-			print ("  FAIL: " + a_name + "%N")
+			print ("  FAIL: " + a_name)
+			if attached (create {EXCEPTION_MANAGER}).last_exception as al_e then
+				print (" -- " + al_e.original.generating_type.name)
+				if attached al_e.original.description as al_d then
+					print (": " + al_d.to_string_8)
+				end
+			end
+			print ("%N")
 			failed := failed + 1
 			l_retried := True
 			retry

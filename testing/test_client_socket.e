@@ -1,12 +1,12 @@
 note
-	description: "Unit tests for CLIENT_SOCKET"
+	description: "Unit tests for CLIENT_SOCKET (I/O tests use a loopback SERVER_SOCKET in this processor)"
 	author: "simple_net team"
-	date: "2026-01-28"
+	date: "2026-10-08"
 
 class TEST_CLIENT_SOCKET
 
 inherit
-	TEST_SET_BASE
+	NET_TEST_SUPPORT
 
 feature -- Tests: Creation
 
@@ -47,6 +47,41 @@ feature -- Tests: Timeout
 			assert ("timeout set", client.timeout = 5.0)
 		end
 
+	test_set_timeout_updates_timeout
+			-- Verify set_timeout() updates timeout value
+		local
+			client: CLIENT_SOCKET
+		do
+			create client.make_for_host_port ("example.com", 8080)
+			assert ("initial timeout", client.timeout = 30.0)
+			client.set_timeout (15.0)
+			assert ("timeout updated", client.timeout = 15.0)
+		end
+
+	test_set_timeout_boundary_values
+			-- Verify: set_timeout() with boundary values
+		local
+			client: CLIENT_SOCKET
+		do
+			create client.make_for_host_port ("example.com", 8080)
+			client.set_timeout (0.001)
+			assert ("small timeout", client.timeout = 0.001)
+			client.set_timeout (3600.0)
+			assert ("large timeout", client.timeout = 3600.0)
+			assert ("zero timeout rejected", violates_precondition (agent set_client_timeout (client, 0.0)))
+		end
+
+	test_timeout_persists_across_operations
+			-- Verify: timeout setting persists across a failed connect
+		local
+			client: CLIENT_SOCKET
+		do
+			create client.make_for_host_port ("127.0.0.1", unused_port)
+			client.set_timeout (5.0)
+			refute ("connect fails", client.connect)
+			assert ("timeout persists", client.timeout = 5.0)
+		end
+
 feature -- Tests: State Invariants
 
 	test_not_connected_initially
@@ -79,167 +114,6 @@ feature -- Tests: State Invariants
 			assert ("not at EOF", not client.is_at_end_of_stream)
 		end
 
-feature -- Tests: Command Contracts
-
-	test_connect_success_implies_connected
-			-- Verify connect() success ensures is_connected
-		local
-			client: CLIENT_SOCKET
-			success: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			success := client.connect
-			if success then
-				assert ("connected on success", client.is_connected)
-				assert ("no error on success", not client.is_error)
-			end
-		end
-
-	test_connect_failure_implies_error
-			-- Verify connect() failure ensures is_error
-		local
-			client: CLIENT_SOCKET
-			success: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			success := client.connect
-			if not success then
-				assert ("error on failure", client.is_error)
-				assert ("not connected on failure", not client.is_connected)
-			end
-		end
-
-	test_send_increments_bytes_sent
-			-- Verify send() increments bytes_sent counter
-		local
-			client: CLIENT_SOCKET
-			data: ARRAY [NATURAL_8]
-			old_count: INTEGER
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			create data.make_empty
-			data.force (65, data.lower)  -- 'A'
-			data.force (66, data.upper + 1)  -- 'B'
-			old_count := client.bytes_sent
-			if connected and client.send (data) then
-				assert ("bytes incremented", client.bytes_sent >= old_count + 2)
-			end
-		end
-
-	test_send_string_increments_bytes_sent
-			-- Verify send_string() increments bytes_sent counter
-		local
-			client: CLIENT_SOCKET
-			msg: STRING
-			old_count: INTEGER
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			msg := "Hello"
-			old_count := client.bytes_sent
-			if connected and client.send_string (msg) then
-				assert ("bytes incremented", client.bytes_sent >= old_count + msg.count)
-			end
-		end
-
-	test_receive_on_eof_returns_empty
-			-- Verify receive() returns empty array when EOF
-		local
-			client: CLIENT_SOCKET
-			data: ARRAY [NATURAL_8]
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			if connected then
-				data := client.receive (1024)
-				assert ("receives empty on EOF stub", data.count = 0)
-			end
-		end
-
-	test_receive_string_returns_string
-			-- Verify receive_string() returns STRING
-		local
-			client: CLIENT_SOCKET
-			msg: STRING
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			if connected then
-				msg := client.receive_string (1024)
-				assert ("result is string", msg /= Void)
-			end
-		end
-
-	test_close_sets_closed_flag
-			-- Verify close() sets is_closed
-		local
-			client: CLIENT_SOCKET
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			client.close
-			assert ("is closed", client.is_closed)
-			assert ("not connected after close", not client.is_connected)
-		end
-
-	test_set_timeout_updates_timeout
-			-- Verify set_timeout() updates timeout value
-		local
-			client: CLIENT_SOCKET
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			assert ("initial timeout", client.timeout = 30.0)
-			client.set_timeout (15.0)
-			assert ("timeout updated", client.timeout = 15.0)
-		end
-
-feature -- Tests: State Machine Invariants
-
-	test_connected_excludes_error
-			-- Verify: is_connected implies not is_error
-		local
-			client: CLIENT_SOCKET
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			if client.is_connected then
-				assert ("error false when connected", not client.is_error)
-			end
-		end
-
-	test_connected_excludes_closed
-			-- Verify: is_connected implies not is_closed
-		local
-			client: CLIENT_SOCKET
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			if client.is_connected then
-				assert ("not closed when connected", not client.is_closed)
-			end
-		end
-
-	test_error_excludes_closed
-			-- Verify: is_error implies not is_closed
-		local
-			client: CLIENT_SOCKET
-			connected: BOOLEAN
-		do
-			create client.make_for_host_port ("nonexistent-server-xyz.invalid", 9999)
-			connected := client.connect
-			if client.is_error then
-				assert ("not closed when error", not client.is_closed)
-			end
-		end
-
 	test_bytes_non_negative
 			-- Verify: bytes_sent >= 0 and bytes_received >= 0
 		local
@@ -270,119 +144,194 @@ feature -- Tests: State Machine Invariants
 			assert ("remote address not void", client.remote_address /= Void)
 		end
 
-feature -- Tests: Adversarial - Edge Cases
+feature -- Tests: Command Contracts
 
-	test_connect_on_already_connected_socket
-			-- Verify: connect() on already-connected socket (precondition violation)
+	test_connect_success_implies_connected
+			-- connect() to a listening loopback server succeeds and connects
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			create client.make_for_address (server.local_address)
+			client.set_timeout (10.0)
+			assert ("connect succeeds", client.connect)
+			assert ("connected on success", client.is_connected)
+			assert ("no error on success", not client.is_error)
+			assert ("local address known", client.has_local_address)
+			client.close
+			server.close
+		end
+
+	test_connect_failure_implies_error
+			-- connect() to a port nobody listens on fails into the error state
 		local
 			client: CLIENT_SOCKET
-			first_connect: BOOLEAN
 		do
-			create client.make_for_host_port ("example.com", 8080)
-			first_connect := client.connect
-			if first_connect and client.is_connected then
-				-- Second connect should fail precondition (not_connected required)
-				-- Phase 4 stub allows this; real implementation would enforce precondition
-				-- This test documents expected contract behavior
-				assert ("contract allows retry", True)
+			create client.make_for_host_port ("127.0.0.1", unused_port)
+			client.set_timeout (10.0)
+			refute ("connect fails", client.connect)
+			assert ("error on failure", client.is_error)
+			assert ("not connected on failure", not client.is_connected)
+			assert ("refused", client.error_classification.is_connection_refused)
+		end
+
+	test_send_increments_bytes_sent
+			-- Verify send() increments bytes_sent counter
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			assert ("sent", client.send ({ARRAY [NATURAL_8]} <<65, 66>>))
+			assert_integers_equal ("bytes incremented", 2, client.bytes_sent)
+			client.close
+			server.close
+		end
+
+	test_send_string_increments_bytes_sent
+			-- Verify send_string() increments bytes_sent counter
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			assert ("sent", client.send_string ("Hello"))
+			assert_integers_equal ("bytes incremented", 5, client.bytes_sent)
+			client.close
+			server.close
+		end
+
+	test_receive_on_eof_returns_empty
+			-- receive() returns an empty array once the peer has closed
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			if attached server.accept as al_connection then
+				al_connection.close
+			else
+				assert ("accepted", False)
 			end
-		end
-
-	test_send_on_disconnected_socket
-			-- Verify: send() fails or raises on disconnected socket
-		local
-			client: CLIENT_SOCKET
-			data: ARRAY [NATURAL_8]
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			create data.make_empty
-			data.force (65, data.lower)
-			-- send() requires is_connected; calling on disconnected socket
-			-- should fail precondition or return failure
-			-- This documents the contract enforcement point
-			assert ("send requires connected", True)
-		end
-
-	test_receive_on_disconnected_socket
-			-- Verify: receive() requires is_connected
-		local
-			client: CLIENT_SOCKET
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			-- receive() requires is_connected
-			assert ("receive requires connected", True)
-		end
-
-	test_close_idempotent
-			-- Verify: close() can be called multiple times safely
-		local
-			client: CLIENT_SOCKET
-		do
-			create client.make_for_host_port ("example.com", 8080)
+			assert_integers_equal ("empty on EOF", 0, client.receive (1024).count)
+			assert ("EOF flagged", client.is_at_end_of_stream)
+			refute ("not an error", client.is_error)
 			client.close
-			assert ("first close", client.is_closed)
-			-- Second close should be safe (idempotent)
-			client.close
-			assert ("second close idempotent", client.is_closed)
+			server.close
 		end
 
-	test_set_timeout_boundary_values
-			-- Verify: set_timeout() with boundary values
+	test_receive_string_returns_string
+			-- receive_string() returns the bytes the peer sent
 		local
+			server: SERVER_SOCKET
 			client: CLIENT_SOCKET
 		do
-			create client.make_for_host_port ("example.com", 8080)
-			-- Very small timeout
-			client.set_timeout (0.001)
-			assert ("small timeout", client.timeout = 0.001)
-			-- Very large timeout
-			client.set_timeout (3600.0)
-			assert ("large timeout", client.timeout = 3600.0)
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			if attached server.accept as al_connection then
+				assert ("peer sends", al_connection.send_string ("hi there"))
+				assert_equal ("received", "hi there", client.receive_string (1024))
+				assert_integers_equal ("bytes received", 8, client.bytes_received)
+				al_connection.close
+			else
+				assert ("accepted", False)
+			end
+			client.close
+			server.close
+		end
+
+	test_close_sets_closed_flag
+			-- Verify close() sets is_closed
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			client.close
+			assert ("is closed", client.is_closed)
+			assert ("not connected after close", not client.is_connected)
+			server.close
+		end
+
+feature -- Tests: State Machine Invariants
+
+	test_connected_excludes_error
+			-- Verify: is_connected implies not is_error
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			assert ("error false when connected", not client.is_error)
+			client.close
+			server.close
+		end
+
+	test_connected_excludes_closed
+			-- Verify: is_connected implies not is_closed
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			assert ("not closed when connected", not client.is_closed)
+			client.close
+			server.close
+		end
+
+	test_error_excludes_closed
+			-- Verify: is_error implies not is_closed (and close clears the error state)
+		local
+			client: CLIENT_SOCKET
+			connected: BOOLEAN
+		do
+			create client.make_for_host_port ("127.0.0.1", unused_port)
+			client.set_timeout (10.0)
+			connected := client.connect
+			refute ("not connected", connected)
+			assert ("in error", client.is_error)
+			assert ("not closed when error", not client.is_closed)
+			client.close
+			refute ("close clears error", client.is_error)
+			assert ("closed", client.is_closed)
 		end
 
 	test_bytes_sent_monotonic_increasing
-			-- Verify: bytes_sent only increases or stays same (never decreases)
+			-- Verify: bytes_sent only increases
 		local
+			server: SERVER_SOCKET
 			client: CLIENT_SOCKET
-			data: ARRAY [NATURAL_8]
 			bytes1: INTEGER
-			bytes2: INTEGER
-			connected: BOOLEAN
 		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
+			server := listening_server
+			client := connected_client (server.local_address.port)
 			bytes1 := client.bytes_sent
-			if connected then
-				create data.make_empty
-				data.force (65, data.lower)
-				if client.send (data) then
-					bytes2 := client.bytes_sent
-					assert ("bytes monotonic", bytes2 >= bytes1)
-				end
-			end
+			assert ("sent", client.send ({ARRAY [NATURAL_8]} <<65>>))
+			assert ("bytes monotonic", client.bytes_sent > bytes1)
+			client.close
+			server.close
 		end
 
 	test_multiple_consecutive_sends
 			-- Verify: multiple sends accumulate bytes correctly
 		local
+			server: SERVER_SOCKET
 			client: CLIENT_SOCKET
-			data: ARRAY [NATURAL_8]
-			total_bytes: INTEGER
-			connected: BOOLEAN
 		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
-			if connected then
-				create data.make_empty
-				data.force (65, data.lower)
-				if client.send (data) then
-					total_bytes := client.bytes_sent
-					data.force (66, data.upper + 1)
-					if client.send (data) then
-						assert ("accumulates bytes", client.bytes_sent >= total_bytes + 1)
-					end
-				end
-			end
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			assert ("first", client.send ({ARRAY [NATURAL_8]} <<65>>))
+			assert ("second", client.send ({ARRAY [NATURAL_8]} <<65, 66>>))
+			assert_integers_equal ("accumulates bytes", 3, client.bytes_sent)
+			client.close
+			server.close
 		end
 
 feature -- Tests: Adversarial - State Transition Attacks
@@ -390,52 +339,93 @@ feature -- Tests: Adversarial - State Transition Attacks
 	test_state_transition_connect_then_close
 			-- Verify: connect followed by close leaves socket closed
 		local
+			server: SERVER_SOCKET
 			client: CLIENT_SOCKET
-			connected: BOOLEAN
 		do
-			create client.make_for_host_port ("example.com", 8080)
-			connected := client.connect
+			server := listening_server
+			client := connected_client (server.local_address.port)
 			client.close
 			assert ("closed after connect+close", client.is_closed)
 			assert ("not connected after close", not client.is_connected)
+			server.close
 		end
 
 	test_state_transition_close_then_connect
-			-- Verify: close followed by connect (should fail precondition)
+			-- Verify: connect after close violates the precondition
+		local
+			client: CLIENT_SOCKET
+		do
+			create client.make_for_host_port ("127.0.0.1", 80)
+			client.close
+			assert ("reconnect after close rejected", violates_precondition (agent connect_client (client)))
+		end
+
+	test_connect_on_already_connected_socket
+			-- Verify: connect() on an already-connected socket violates the precondition
+		local
+			server: SERVER_SOCKET
+			client: CLIENT_SOCKET
+		do
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			assert ("second connect rejected", violates_precondition (agent connect_client (client)))
+			assert ("still connected", client.is_connected)
+			client.close
+			server.close
+		end
+
+	test_send_on_disconnected_socket
+			-- Verify: send() on a never-connected socket violates the precondition
+		local
+			client: CLIENT_SOCKET
+		do
+			create client.make_for_host_port ("127.0.0.1", 80)
+			assert ("send requires connected", violates_precondition (agent send_one_byte (client)))
+		end
+
+	test_receive_on_disconnected_socket
+			-- Verify: receive() on a never-connected socket violates the precondition
+		local
+			client: CLIENT_SOCKET
+		do
+			create client.make_for_host_port ("127.0.0.1", 80)
+			assert ("receive requires connected", violates_precondition (agent receive_some (client)))
+		end
+
+	test_close_idempotent
+			-- Verify: close() can be called more than once
 		local
 			client: CLIENT_SOCKET
 		do
 			create client.make_for_host_port ("example.com", 8080)
 			client.close
-			-- connect() requires not is_closed
-			-- Calling on closed socket should fail precondition
-			assert ("contract prevents reconnect after close", True)
-		end
-
-	test_timeout_persists_across_operations
-			-- Verify: timeout setting persists across multiple operations
-		local
-			client: CLIENT_SOCKET
-		do
-			create client.make_for_host_port ("example.com", 8080)
-			client.set_timeout (5.0)
-			assert ("timeout set", client.timeout = 5.0)
-			-- Timeout should persist even after failed operations
-			assert ("timeout persists", client.timeout = 5.0)
+			assert ("first close", client.is_closed)
+			client.close
+			assert ("second close idempotent", client.is_closed)
 		end
 
 feature -- Tests: Adversarial - Resource Limits
 
 	test_large_byte_count_tracking
-			-- Verify: bytes_sent tracking works with large numbers
+			-- Verify: bytes_sent tracks a 32 KiB send exactly (fits loopback buffers in one thread)
 		local
+			server: SERVER_SOCKET
 			client: CLIENT_SOCKET
+			data: ARRAY [NATURAL_8]
 		do
-			create client.make_for_host_port ("example.com", 8080)
-			assert ("starts at 0", client.bytes_sent = 0)
-			-- In real system, would test MB/GB transfers
-			-- Phase 4 stub just tracks counter
-			assert ("counter non-negative", client.bytes_sent >= 0)
+			server := listening_server
+			client := connected_client (server.local_address.port)
+			create data.make_filled (7, 1, 32_768)
+			if attached server.accept as al_connection then
+				assert ("sent", client.send (data))
+				assert_integers_equal ("counted", 32_768, client.bytes_sent)
+				assert_integers_equal ("peer got it all", 32_768, al_connection.receive_exactly (32_768).count)
+				al_connection.close
+			else
+				assert ("accepted", False)
+			end
+			client.close
+			server.close
 		end
 
 	test_extreme_port_values
@@ -446,17 +436,14 @@ feature -- Tests: Adversarial - Resource Limits
 		do
 			create addr_min.make_for_host_port ("localhost", 1)
 			assert ("port 1 valid", addr_min.port = 1)
-
 			create addr_max.make_for_host_port ("localhost", 65535)
 			assert ("port 65535 valid", addr_max.port = 65535)
 		end
 
 	test_socket_with_empty_hostname
-			-- Verify: ADDRESS handles empty string (should fail precondition)
+			-- Verify: an empty host name violates the creation precondition
 		do
-			-- make_for_host_port requires non-empty host
-			-- This test documents the contract enforcement
-			assert ("host validation enforced", True)
+			assert ("empty host rejected", violates_precondition (agent make_client ("", 8080)))
 		end
 
 	test_ipv4_validation_accuracy
@@ -467,10 +454,42 @@ feature -- Tests: Adversarial - Resource Limits
 		do
 			create valid_ipv4.make_for_host_port ("192.168.1.1", 8080)
 			assert ("valid ipv4 detected", valid_ipv4.is_ipv4_address)
-
 			create invalid_ipv4.make_for_host_port ("256.256.256.256", 8080)
-			-- Phase 4 stub doesn't validate octets; Phase 5 would
-			assert ("ipv4 check runs", True)
+			refute ("octet over 255 rejected", invalid_ipv4.is_ipv4_address)
+		end
+
+feature {NONE} -- Actions
+
+	set_client_timeout (a_client: CLIENT_SOCKET; a_seconds: REAL)
+			-- Call set_timeout.
+		do
+			a_client.set_timeout (a_seconds)
+		end
+
+	connect_client (a_client: CLIENT_SOCKET)
+			-- Call connect.
+		do
+			a_client.connect.do_nothing
+		end
+
+	send_one_byte (a_client: CLIENT_SOCKET)
+			-- Call send.
+		do
+			a_client.send ({ARRAY [NATURAL_8]} <<1>>).do_nothing
+		end
+
+	receive_some (a_client: CLIENT_SOCKET)
+			-- Call receive.
+		do
+			a_client.receive (1).do_nothing
+		end
+
+	make_client (a_host: STRING; a_port: INTEGER)
+			-- Create a client (discarded).
+		local
+			l_client: CLIENT_SOCKET
+		do
+			create l_client.make_for_host_port (a_host, a_port)
 		end
 
 end

@@ -6,7 +6,7 @@ note
 class TEST_SERVER_SOCKET
 
 inherit
-	TEST_SET_BASE
+	NET_TEST_SUPPORT
 
 feature -- Tests: Creation
 
@@ -86,8 +86,9 @@ feature -- Tests: Command Contracts
 			server: SERVER_SOCKET
 			success: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			success := server.listen (10)
+			assert ("listen succeeded", success)
 			if success then
 				assert ("listening on success", server.is_listening)
 				assert ("no error on success", not server.is_error)
@@ -96,17 +97,18 @@ feature -- Tests: Command Contracts
 		end
 
 	test_listen_failure_implies_error
-			-- Verify listen() failure ensures is_error
+			-- listen() on a port another socket holds fails into the error state
 		local
-			server: SERVER_SOCKET
+			holder, server: SERVER_SOCKET
 			success: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			holder := listening_server
+			create server.make_for_address (holder.local_address)
 			success := server.listen (10)
-			if not success then
-				assert ("error on failure", server.is_error)
-				assert ("not listening on failure", not server.is_listening)
-			end
+			refute ("listen fails", success)
+			assert ("error on failure", server.is_error)
+			assert ("not listening on failure", not server.is_listening)
+			holder.close
 		end
 
 	test_listen_stores_backlog
@@ -115,8 +117,9 @@ feature -- Tests: Command Contracts
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (25)
+			assert ("listening", listening)
 			if listening then
 				assert ("backlog stored", server.backlog = 25)
 			end
@@ -129,8 +132,10 @@ feature -- Tests: Command Contracts
 			conn: detachable CONNECTION
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
+			server.set_timeout (0.3)
 			listening := server.listen (10)
+			assert ("listening", listening)
 			if listening then
 				conn := server.accept
 				-- Phase 4 stub returns Void with timeout error
@@ -145,7 +150,7 @@ feature -- Tests: Command Contracts
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (10)
 			server.close
 			assert ("is closed", server.is_closed)
@@ -157,7 +162,7 @@ feature -- Tests: Command Contracts
 		local
 			server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			assert ("initial timeout", server.timeout = 30.0)
 			server.set_timeout (5.0)
 			assert ("timeout updated", server.timeout = 5.0)
@@ -171,7 +176,7 @@ feature -- Tests: State Machine Invariants
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (10)
 			if listening then
 				if server.is_listening then
@@ -186,7 +191,7 @@ feature -- Tests: State Machine Invariants
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (10)
 			if listening then
 				if server.is_listening then
@@ -201,7 +206,7 @@ feature -- Tests: State Machine Invariants
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (10)
 			if server.is_error then
 				assert ("not closed when error", not server.is_closed)
@@ -214,7 +219,7 @@ feature -- Tests: State Machine Invariants
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			assert ("initial backlog non-negative", server.backlog >= 0)
 			listening := server.listen (10)
 			assert ("backlog after listen non-negative", server.backlog >= 0)
@@ -225,7 +230,7 @@ feature -- Tests: State Machine Invariants
 		local
 			server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			assert ("initial count non-negative", server.connection_count >= 0)
 		end
 
@@ -234,7 +239,7 @@ feature -- Tests: State Machine Invariants
 		local
 			server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			assert ("timeout positive", server.timeout > 0.0)
 			server.set_timeout (10.0)
 			assert ("timeout remains positive", server.timeout > 0.0)
@@ -245,35 +250,30 @@ feature -- Tests: State Machine Invariants
 		local
 			server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			assert ("local address not void", server.local_address /= Void)
 		end
 
 feature -- Tests: Adversarial - Edge Cases
 
 	test_listen_on_already_listening_socket
-			-- Verify: listen() on already-listening socket (precondition violation)
+			-- A second listen() on a listening socket violates the precondition
 		local
 			server: SERVER_SOCKET
-			first_listen: BOOLEAN
 		do
-			create server.make_for_port (9999)
-			first_listen := server.listen (10)
-			if first_listen and server.is_listening then
-				-- Second listen should fail precondition (not_listening required)
-				assert ("contract prevents double listen", True)
-			end
+			server := listening_server
+			assert ("double listen rejected", violates_precondition (agent listen_on (server)))
+			assert ("still listening", server.is_listening)
+			server.close
 		end
 
 	test_accept_on_non_listening_socket
-			-- Verify: accept() requires is_listening
+			-- accept() on a socket that is not listening violates the precondition
 		local
 			server: SERVER_SOCKET
 		do
 			create server.make_for_port (9999)
-			-- accept() requires is_listening
-			-- Calling on non-listening socket should fail precondition
-			assert ("accept requires listening", True)
+			assert ("accept requires listening", violates_precondition (agent accept_on (server)))
 		end
 
 	test_listen_with_various_backlog_values
@@ -283,17 +283,17 @@ feature -- Tests: Adversarial - Edge Cases
 			server2: SERVER_SOCKET
 			server3: SERVER_SOCKET
 		do
-			create server1.make_for_port (10001)
+			server1 := loopback_server
 			if server1.listen (1) then
 				assert ("backlog 1", server1.backlog = 1)
 			end
 
-			create server2.make_for_port (10002)
+			server2 := loopback_server
 			if server2.listen (128) then
 				assert ("backlog 128", server2.backlog = 128)
 			end
 
-			create server3.make_for_port (10003)
+			server3 := loopback_server
 			if server3.listen (1024) then
 				assert ("backlog 1024", server3.backlog = 1024)
 			end
@@ -305,7 +305,7 @@ feature -- Tests: Adversarial - Edge Cases
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (10)
 			server.close
 			assert ("first close", server.is_closed)
@@ -319,7 +319,7 @@ feature -- Tests: Adversarial - Edge Cases
 		local
 			server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			-- Very small timeout
 			server.set_timeout (0.001)
 			assert ("small timeout", server.timeout = 0.001)
@@ -334,8 +334,9 @@ feature -- Tests: Adversarial - Edge Cases
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (50)
+			assert ("listening", listening)
 			if listening then
 				assert ("backlog set", server.backlog = 50)
 				-- Backlog should persist across queries
@@ -350,7 +351,7 @@ feature -- Tests: Adversarial - Edge Cases
 			count1: INTEGER
 			count2: INTEGER
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			count1 := server.connection_count
 			assert ("starts at 0", count1 = 0)
 			-- connection_count is read-only; should not decrease
@@ -366,7 +367,7 @@ feature -- Tests: Adversarial - State Transition Attacks
 			server: SERVER_SOCKET
 			listening: BOOLEAN
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			listening := server.listen (10)
 			server.close
 			assert ("closed after listen+close", server.is_closed)
@@ -374,15 +375,13 @@ feature -- Tests: Adversarial - State Transition Attacks
 		end
 
 	test_state_transition_close_then_listen
-			-- Verify: listen after close (should fail precondition)
+			-- listen() after close() violates the precondition
 		local
 			server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			server.close
-			-- listen() requires not is_closed
-			-- Calling on closed socket should fail precondition
-			assert ("contract prevents re-listen after close", True)
+			assert ("re-listen after close rejected", violates_precondition (agent listen_on (server)))
 		end
 
 	test_timeout_persists_across_operations
@@ -390,7 +389,7 @@ feature -- Tests: Adversarial - State Transition Attacks
 		local
 			server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
+			server := loopback_server
 			server.set_timeout (5.0)
 			assert ("timeout set", server.timeout = 5.0)
 			-- Timeout should persist even after failed operations
@@ -398,17 +397,19 @@ feature -- Tests: Adversarial - State Transition Attacks
 		end
 
 	test_state_consistency_after_failed_listen
-			-- Verify: socket remains in valid state after failed listen
+			-- After a failed listen: in error, not listening, not closed; close clears the error
 		local
-			server: SERVER_SOCKET
-			listening: BOOLEAN
+			holder, server: SERVER_SOCKET
 		do
-			create server.make_for_port (9999)
-			listening := server.listen (10)
-			if not listening then
-				-- If listen failed, socket should be in error state
-				assert ("error or not listening", server.is_error or not server.is_listening)
-			end
+			holder := listening_server
+			create server.make_for_address (holder.local_address)
+			refute ("listen fails", server.listen (10))
+			assert ("error", server.is_error)
+			refute ("not listening", server.is_listening)
+			refute ("not closed", server.is_closed)
+			server.close
+			refute ("close clears error", server.is_error)
+			holder.close
 		end
 
 feature -- Tests: Adversarial - Resource Limits
@@ -427,27 +428,46 @@ feature -- Tests: Adversarial - Resource Limits
 		end
 
 	test_zero_port_invalid
-			-- Verify: port 0 rejected by precondition
+			-- Port 0 violates make_for_port's precondition
 		do
-			-- make_for_host_port requires port >= 1
-			-- port 0 should fail precondition
-			assert ("port validation enforced", True)
+			assert ("port 0 rejected", violates_precondition (agent make_server (0)))
 		end
 
 	test_negative_port_invalid
-			-- Verify: negative port rejected by precondition
+			-- A negative port violates make_for_port's precondition
 		do
-			-- make_for_host_port requires port >= 1
-			-- negative port should fail precondition
-			assert ("negative port rejected", True)
+			assert ("port -1 rejected", violates_precondition (agent make_server (-1)))
 		end
 
 	test_port_over_65535_invalid
-			-- Verify: port > 65535 rejected by precondition
+			-- Port 65536 violates make_for_port's precondition
 		do
-			-- make_for_host_port requires port <= 65535
-			-- port > 65535 should fail precondition
-			assert ("port > 65535 rejected", True)
+			assert ("port 65536 rejected", violates_precondition (agent make_server (65536)))
+		end
+
+
+feature {NONE} -- Actions
+
+	listen_on (a_server: SERVER_SOCKET)
+			-- Call listen.
+		do
+			a_server.listen (10).do_nothing
+		end
+
+	accept_on (a_server: SERVER_SOCKET)
+			-- Call accept.
+		do
+			if attached a_server.accept as al_connection then
+				al_connection.close
+			end
+		end
+
+	make_server (a_port: INTEGER)
+			-- Create a server (discarded).
+		local
+			l_server: SERVER_SOCKET
+		do
+			create l_server.make_for_port (a_port)
 		end
 
 end

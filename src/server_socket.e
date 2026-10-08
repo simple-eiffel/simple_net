@@ -1,11 +1,28 @@
 note
-	description: "TCP server socket (accepts inbound connections)"
+	description: "[
+		TCP server socket (accepts inbound connections), IPv4, Winsock 2.
+
+		`listen' binds `local_address' (exclusively: no other socket may share
+		the port) and starts the queue; `accept' waits up to `timeout' for the
+		next client and returns a CONNECTION for it.
+
+		Errors, including an `accept' timeout, are terminal: the listening
+		socket is released, `is_error' holds, and the caller makes a new
+		SERVER_SOCKET to listen again. `close' may be called more than once.
+
+		Listen on "127.0.0.1" (make_for_address) for local-only servers;
+		`make_for_port' binds every interface (0.0.0.0), which Windows Firewall
+		may ask the user about.
+	]"
 	author: "simple_net team"
-	date: "2026-01-28"
+	date: "2026-10-08"
 	void_safety: "all"
-	scoop: "thread_safe"
+	scoop: "One SERVER_SOCKET belongs to one processor; accept is a blocking external."
 
 class SERVER_SOCKET
+
+inherit
+	NET_HANDLE_OWNER
 
 create
 	make_for_port,
@@ -38,6 +55,9 @@ feature {NONE} -- Representation
 	connection_count_impl: INTEGER
 			-- Total connections accepted (lifetime counter)
 
+	api: NET_SOCKET_API
+			-- Winsock primitives
+
 feature -- Creation
 
 	make_for_port (a_port: INTEGER)
@@ -53,6 +73,7 @@ feature -- Creation
 			backlog_impl := 0
 			connection_count_impl := 0
 			create error_impl.make (0)
+			create api.make
 		ensure
 			local_port_set: local_address.port = a_port
 			not_listening: not is_listening
@@ -73,6 +94,7 @@ feature -- Creation
 			backlog_impl := 0
 			connection_count_impl := 0
 			create error_impl.make (0)
+			create api.make
 		ensure
 			local_address_set: local_address = a_address
 			not_listening: not is_listening
@@ -89,12 +111,18 @@ feature -- Commands
 			positive_backlog: a_backlog > 0
 			not_already_closed: not is_closed
 		do
-			-- Phase 4 Stub: Return success (real implementation would use NETWORK_SOCKET)
-			is_listening_impl := True
-			backlog_impl := a_backlog
+			release_handle (False)
 			is_error_impl := False
-			error_impl.make (0)
-			Result := True
+			api.listen_on (local_address.host, local_address.port, a_backlog)
+			if api.is_ok then
+				set_handle (api.last_handle)
+				create error_impl.make (0)
+				is_listening_impl := True
+				backlog_impl := a_backlog
+				Result := True
+			else
+				fail (api.last_error_code)
+			end
 		ensure
 			success_means_listening: Result implies (is_listening and not is_error and backlog = a_backlog)
 			failure_means_error: (not Result) implies (is_error and not is_listening)
@@ -113,10 +141,15 @@ feature -- Commands
 			is_listening: is_listening
 			not_in_error: not is_error
 		do
-			-- Phase 4 Stub: Return Void (timeout/error simulation)
-			is_error_impl := True
-			error_impl.make (-1)  -- -1 for generic timeout
-			Result := Void
+			api.accept_from (handle, api.milliseconds (timeout))
+			if api.is_ok then
+				create Result.make_accepted (api.last_handle,
+					create {ADDRESS}.make_for_host_port (api.last_endpoint_host, api.last_endpoint_port),
+					timeout)
+				connection_count_impl := connection_count_impl + 1
+			else
+				fail (api.last_error_code)
+			end
 		ensure
 			success_guarantee: (Result /= Void) implies (connection_count = old connection_count + 1 and not is_error)
 			void_means_error_or_timeout: (Result = Void) implies (is_error or operation_timed_out)
@@ -128,12 +161,12 @@ feature -- Commands
 		end
 
 	close
-			-- Stop listening and close server socket.
-		require
-			not_already_closed: not is_closed
+			-- Stop listening and close server socket. Safe to call again.
 		do
+			release_handle (False)
 			is_closed_impl := True
 			is_listening_impl := False
+			is_error_impl := False
 		ensure
 			is_closed: is_closed
 			not_listening: not is_listening
@@ -182,7 +215,7 @@ feature -- Queries
 		do
 			Result := is_error_impl
 		ensure
-			error_xor_listening: Result or is_listening
+			error_excludes_listening: Result implies not is_listening
 		end
 
 	error_classification: ERROR_TYPE
@@ -196,20 +229,20 @@ feature -- Queries
 		end
 
 	last_error_string: STRING
-			-- Human-readable error description
+			-- Human-readable description of the most recent failure, with the
+			-- Winsock code, e.g. "listen on 127.0.0.1:80: Bind error (port in use?) (WSA 10048)".
 		require
-			in_error: is_error
+			has_failed: last_error_code /= 0
 		do
-			Result := error_impl.to_string
+			Result := "listen on " + local_address.as_string + ": " + error_impl.to_string
+				+ " (WSA " + error_impl.code.out + ")"
 		ensure
 			result_not_void: Result /= Void
 			result_not_empty: Result.count > 0
 		end
 
 	backlog: INTEGER
-			-- Connection queue depth (set by listen)
-		require
-			is_listening or is_closed
+			-- Connection queue depth (set by a successful listen; 0 before)
 		do
 			Result := backlog_impl
 		ensure
@@ -246,10 +279,35 @@ feature -- Queries
 			Result := is_error and error_classification.is_timeout
 		end
 
+	last_error_code: INTEGER
+			-- Winsock code of the most recent failure (0 if none); kept after `close'.
+		do
+			Result := error_impl.code
+		end
+
+feature {NONE} -- Implementation
+
+	fail (a_code: INTEGER)
+			-- Enter the error state for Winsock code `a_code'; the listening socket is released.
+		require
+			real_error: a_code /= 0
+		do
+			release_handle (False)
+			create error_impl.make (a_code)
+			is_error_impl := True
+			is_listening_impl := False
+		ensure
+			in_error: is_error
+			not_listening: not is_listening
+			code_kept: last_error_code = a_code
+		end
+
 invariant
 	listening_excludes_error: is_listening implies not is_error
 	listening_excludes_closed: is_listening implies not is_closed
 	error_excludes_closed: is_error implies not is_closed
+	error_has_code: is_error implies error_impl.code /= 0
+	handle_iff_listening: has_handle = is_listening
 	backlog_non_negative: backlog >= 0
 	connection_count_non_negative: connection_count >= 0
 	timeout_positive: timeout > 0.0

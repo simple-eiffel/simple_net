@@ -98,7 +98,7 @@ feature -- Library Metadata
 	version: STRING
 			-- Library version number
 		do
-			Result := "1.0.0"
+			Result := "1.2.0"
 		ensure
 			result_not_void: Result /= Void
 		end
@@ -106,7 +106,7 @@ feature -- Library Metadata
 	description: STRING
 			-- Library description
 		do
-			Result := "simple_net: TCP Socket Abstraction Library - Wrap ISE net.ecf with intuitive API"
+			Result := "simple_net: TCP Socket Abstraction Library - IPv4 TCP over Winsock 2 (inline C)"
 		ensure
 			result_not_void: Result /= Void
 		end

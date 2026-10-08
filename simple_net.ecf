@@ -3,10 +3,10 @@
 	<description>
 		simple_net: TCP Socket Abstraction Library
 
-		Thin wrapper around ISE's net.ecf providing intuitive, US-friendly API
-		for TCP client/server programming. Reduces boilerplate from 50-100 LOC
-		to 5-10 LOC for typical patterns. 100% Design by Contract, SCOOP-safe,
-		void-safe.
+		IPv4 TCP client/server sockets over Winsock 2 through inline C
+		(no ISE net library). Connect/send/receive/accept with timeouts,
+		Winsock error codes, Design by Contract, SCOOP-safe (every waiting
+		external is `blocking'), void-safe. Windows only.
 	</description>
 
 	<!-- Primary library target -->
@@ -20,19 +20,26 @@
 			<void_safety support="all"/>
 		</capability>
 
-		<!-- Enable all assertions in library for contract enforcement -->
-		<setting name="precondition" value="true"/>
-		<setting name="postcondition" value="true"/>
-		<setting name="invariant" value="true"/>
+		<!-- Contract monitoring for the library clusters (honoured when a client finalizes with -keep) -->
+		<option warning="warning">
+			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
+		</option>
+
+		<!-- getaddrinfo/inet_ntop need Vista+ headers; ISE compiles C for 0x0500 by default -->
+		<external_cflag value="-D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_cflag>
+		<external_object location="ws2_32.lib">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</external_object>
 
 		<!-- ISE Core Libraries (allowed: no simple_* equivalent) -->
 		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf">
 			<description>EiffelStudio base library (fundamental types)</description>
-		</library>
-
-		<!-- ISE Network Library (this is what we wrap - no simple_* equivalent exists) -->
-		<library name="net" location="$ISE_LIBRARY/library/net/net.ecf">
-			<description>ISE net.ecf - proven TCP/UDP socket implementation (20+ years)</description>
 		</library>
 
 		<!-- simple_* Preferred Libraries (ecosystem first policy) -->
@@ -52,10 +59,11 @@
 		<description>simple_net with test suite</description>
 		<root class="TEST_APP" feature="make"/>
 
-		<!-- Enable all assertions for testing -->
-		<setting name="precondition" value="true"/>
-		<setting name="postcondition" value="true"/>
-		<setting name="invariant" value="true"/>
+		<!-- An extending target must repeat the assertions option, or its clusters run contract-free -->
+		<option warning="warning">
+			<assertions precondition="true" postcondition="true" check="true" invariant="true" loop="true" supplier_precondition="true"/>
+		</option>
+		<setting name="console_application" value="true"/>
 
 		<!-- ISE Testing Framework (kept for compatibility) -->
 		<library name="testing" location="$ISE_LIBRARY/library/testing/testing.ecf">

@@ -1,36 +1,30 @@
 note
 	description: "Simple direct test of contract violation"
 	author: "simple_net team"
-	date: "2026-01-28"
+	date: "2026-10-08"
 
 class TEST_SIMPLE_VIOLATION
 
 inherit
-	TEST_SET_BASE
+	NET_TEST_SUPPORT
 
 feature -- Direct Test
 
 	test_simple_empty_host_direct
-			-- Simplest possible test: just try to create with empty host
-		do
-			try_create_empty
-		end
-
-	try_create_empty
-			-- Helper - called directly, not via agent
+			-- Creating an ADDRESS with an empty host is caught by its precondition.
 		local
+			l_retried, l_caught: BOOLEAN
 			addr: ADDRESS
 		do
-			-- This call should violate precondition: non_empty_host
-			create addr.make_for_host_port ("", 8080)
-			
-			-- If we get here, violation was allowed
-			print ("%N[VIOLATION ALLOWED] Created with empty host%N")
-			assert ("violation allowed", addr.host.is_empty)
+			if not l_retried then
+				create addr.make_for_host_port ("", 8080)
+			end
+			assert ("violation caught", l_caught)
 		rescue
-			-- If we get here, violation raised exception
-			print ("%N[VIOLATION CAUGHT] Exception raised for empty host%N")
-			assert ("violation caught", False)
+			l_caught := attached (create {EXCEPTION_MANAGER}).last_exception as al_e
+				and then attached {PRECONDITION_VIOLATION} al_e.original
+			l_retried := True
+			retry
 		end
 
 end

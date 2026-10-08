@@ -82,10 +82,24 @@ feature -- Error Classification
 			Result := code_impl = 99 or code_impl = 10049  -- EADDRNOTAVAIL=99, Windows=10049
 		end
 
+	is_host_not_found: BOOLEAN
+			-- Host name could not be resolved (WSAHOST_NOT_FOUND, WSATRY_AGAIN,
+			-- WSANO_RECOVERY, WSANO_DATA)?
+		do
+			Result := code_impl >= 11001 and code_impl <= 11004
+		end
+
+	is_connection_aborted: BOOLEAN
+			-- Connection aborted by the local stack (WSAECONNABORTED)?
+		do
+			Result := code_impl = 10053
+		end
+
 	is_timeout: BOOLEAN
 			-- Timeout during operation?
 		do
 			Result := is_connection_timeout or code_impl = -1  -- -1 is generic timeout marker
+				-- (simple_net reports every timeout, connect/send/receive/accept, as 10060)
 		end
 
 	is_retriable: BOOLEAN
@@ -97,7 +111,7 @@ feature -- Error Classification
 	is_fatal: BOOLEAN
 			-- Is this error fatal (don't retry)?
 		do
-			Result := is_address_not_available or is_bind_error
+			Result := is_address_not_available or is_bind_error or is_host_not_found
 		end
 
 feature -- String Representation
@@ -121,6 +135,10 @@ feature -- String Representation
 				Result := "Bind error (port in use?)"
 			elseif is_address_not_available then
 				Result := "Address not available"
+			elseif is_host_not_found then
+				Result := "Host not found"
+			elseif is_connection_aborted then
+				Result := "Connection aborted"
 			else
 				create Result.make_from_string ("Unknown error (code: ")
 				Result.append (code_impl.out)

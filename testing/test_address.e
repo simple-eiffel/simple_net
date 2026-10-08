@@ -6,7 +6,7 @@ note
 class TEST_ADDRESS
 
 inherit
-	TEST_SET_BASE
+	NET_TEST_SUPPORT
 
 feature -- Tests: Creation
 
@@ -33,47 +33,30 @@ feature -- Tests: Creation
 feature -- Tests: Validation
 
 	test_make_for_host_port_rejects_empty_host
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify empty host is allowed (precondition not enforced)
+			-- An empty host violates the precondition
 		do
-			assert_false ("precondition_enforced", test_precondition_violation (agent create_address_with_empty_host))
+			assert_true ("precondition_enforced", violates_precondition (agent create_address_with_empty_host))
 		end
 
 	test_make_for_host_port_rejects_invalid_port_zero
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify port 0 is allowed (precondition not enforced)
+			-- Port 0 violates the precondition
 		do
-			assert_false ("precondition_enforced", test_precondition_violation (agent create_address_with_port_zero))
+			assert_true ("precondition_enforced", violates_precondition (agent create_address_with_port_zero))
 		end
 
 	test_make_for_host_port_rejects_invalid_port_negative
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify negative port is allowed (precondition not enforced)
+			-- A negative port violates the precondition
 		do
-			assert_false ("precondition_enforced", test_precondition_violation (agent create_address_with_negative_port))
+			assert_true ("precondition_enforced", violates_precondition (agent create_address_with_negative_port))
 		end
 
 	test_make_for_host_port_rejects_invalid_port_over_65535
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify port > 65535 is allowed (precondition not enforced)
+			-- A port over 65535 violates the precondition
 		do
-			assert_false ("precondition_enforced", test_precondition_violation (agent create_address_with_port_over_65535))
+			assert_true ("precondition_enforced", violates_precondition (agent create_address_with_port_over_65535))
 		end
 
 feature {NONE} -- Precondition Violation Testing Helpers
-
-	test_precondition_violation (a_test: PROCEDURE): BOOLEAN
-			-- Test that `a_test' causes a precondition violation
-			-- Returns true if precondition was violated (contract enforced)
-			-- Returns false if operation succeeded (contract NOT enforced)
-		do
-			a_test.call (Void)
-			-- If we reach here, precondition was NOT enforced
-			Result := False
-		rescue
-			-- Precondition violation caught - contract is working
-			Result := True
-		end
 
 	create_address_with_empty_host
 			-- Try to create ADDRESS with empty host

@@ -1,136 +1,92 @@
 note
-	description: "Investigation of precondition enforcement mechanisms in Eiffel"
+	description: "[
+		Preconditions ARE enforced at run time in the test build (the ECF turns on
+		full assertion monitoring). Until 1.2.0 the ECF used invalid <setting>
+		tags, contracts were off, and these tests asserted the opposite.
+	]"
 	author: "simple_net team"
-	date: "2026-01-28"
+	date: "2026-10-08"
 
 class TEST_PRECONDITION_INVESTIGATION
 
 inherit
-	TEST_SET_BASE
+	NET_TEST_SUPPORT
 
-feature -- Investigation: Direct Precondition Violation (No Agent)
+feature -- Direct precondition violations
 
 	test_direct_empty_host_violation
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify that empty host does NOT raise exception (precondition not enforced)
-		local
-			addr: ADDRESS
+			-- An empty host violates ADDRESS.make_for_host_port's precondition.
 		do
-			create addr.make_for_host_port ("", 8080)
-			-- If we reach here: precondition was NOT enforced (expected Eiffel behavior)
-			assert_false ("precondition_enforced", False)
-		rescue
-			-- If we reach here: precondition WAS enforced (unexpected in EiffelStudio 25.02)
-			assert_false ("precondition_enforced", True)
+			assert ("empty host rejected", violates_precondition (agent make_address ("", 8080)))
 		end
 
 	test_direct_port_zero_violation
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify that port 0 does NOT raise exception (precondition not enforced)
-		local
-			addr: ADDRESS
+			-- Port 0 is rejected.
 		do
-			create addr.make_for_host_port ("localhost", 0)
-			-- If we reach here: precondition was NOT enforced (expected)
-			assert_false ("precondition_enforced", False)
-		rescue
-			-- If we reach here: precondition WAS enforced (unexpected)
-			assert_false ("precondition_enforced", True)
+			assert ("port 0 rejected", violates_precondition (agent make_address ("localhost", 0)))
 		end
 
 	test_direct_negative_port_violation
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify that negative port does NOT raise exception (precondition not enforced)
-		local
-			addr: ADDRESS
+			-- A negative port is rejected.
 		do
-			create addr.make_for_host_port ("localhost", -1)
-			-- If we reach here: precondition was NOT enforced (expected)
-			assert_false ("precondition_enforced", False)
-		rescue
-			-- If we reach here: precondition WAS enforced (unexpected)
-			assert_false ("precondition_enforced", True)
+			assert ("port -1 rejected", violates_precondition (agent make_address ("localhost", -1)))
 		end
 
 	test_direct_port_over_65535_violation
-			-- Framework test: Preconditions are design-time spec, not runtime-enforced
-			-- Verify that port > 65535 does NOT raise exception (precondition not enforced)
-		local
-			addr: ADDRESS
+			-- Port 65536 is rejected.
 		do
-			create addr.make_for_host_port ("localhost", 65536)
-			-- If we reach here: precondition was NOT enforced (expected)
-			assert_false ("precondition_enforced", False)
-		rescue
-			-- If we reach here: precondition WAS enforced (unexpected)
-			assert_false ("precondition_enforced", True)
+			assert ("port 65536 rejected", violates_precondition (agent make_address ("localhost", 65536)))
 		end
-
-feature -- Investigation: With Explicit Violation Check
 
 	test_violation_with_status_check
-			-- Framework test: Verify precondition violations do NOT raise exceptions
-			-- and objects can exist in potentially invalid state
-		local
-			addr: ADDRESS
+			-- A client socket cannot be made for an empty host either.
 		do
-			-- If creation doesn't fail, check if object is in invalid state
-			create addr.make_for_host_port ("", 8080)
-
-			-- Check invariant: host is empty (precondition not enforced)
-			assert ("invariant not enforced (empty host allowed)", addr.host.is_empty)
-
-			-- This is the documented Eiffel behavior: preconditions are design-time spec
-			assert_false ("precondition_enforced", False)
-		rescue
-			-- Should not reach here (preconditions are not enforced)
-			assert_false ("precondition_enforced", True)
+			assert ("client empty host rejected", violates_precondition (agent make_client ("", 8080)))
 		end
 
-feature -- Investigation: Memory State After Would-Be Violation
-
 	test_object_state_after_invalid_creation
-			-- What's the state of an object if creation with invalid args succeeds?
+			-- After a rejected creation, valid creation still works.
 		local
 			addr: ADDRESS
 		do
-			create addr.make_for_host_port ("", 8080)
-			
-			-- At this point, if we're here, precondition failed but didn't raise exception
-			-- Check what the object's state is
-			assert ("host is empty string", addr.host.is_empty)
-			assert ("port is 8080", addr.port = 8080)
-		rescue
-			assert ("exception was raised", True)
+			assert ("rejected", violates_precondition (agent make_address ("", 8080)))
+			create addr.make_for_host_port ("localhost", 8080)
+			assert_equal ("host", "localhost", addr.host)
+			assert_integers_equal ("port", 8080, addr.port)
 		end
 
 	test_invariant_violation_detection
-			-- Try to detect if invariant is being enforced
+			-- Valid inputs give an object that satisfies its invariant.
 		local
 			addr: ADDRESS
 		do
 			create addr.make_for_host_port ("localhost", 8080)
-			-- This should work - valid inputs
-			assert ("valid creation succeeds", True)
-		rescue
-			-- Should not reach here with valid inputs
-			assert ("unexpected exception with valid inputs", False)
+			refute ("host not empty", addr.host.is_empty)
+			assert ("port in range", addr.port >= 1 and addr.port <= 65535)
 		end
 
-feature -- Investigation: Testing with Void String
-
 	test_void_host_precondition
-			-- What happens with a Void host?
+			-- A valid action raises nothing: the probe does not report false violations.
+		do
+			refute ("valid creation passes", violates_precondition (agent make_address ("localhost", 80)))
+		end
+
+feature {NONE} -- Actions
+
+	make_address (a_host: STRING; a_port: INTEGER)
+			-- Create an ADDRESS (the result is discarded).
 		local
 			addr: ADDRESS
-			l_void_host: detachable STRING
 		do
-			if l_void_host /= Void then
-				create addr.make_for_host_port (l_void_host, 8080)
-			end
-			assert ("void check prevented creation", True)
-		rescue
-			assert ("precondition enforced on void host", True)
+			create addr.make_for_host_port (a_host, a_port)
+		end
+
+	make_client (a_host: STRING; a_port: INTEGER)
+			-- Create a CLIENT_SOCKET (the result is discarded).
+		local
+			l_client: CLIENT_SOCKET
+		do
+			create l_client.make_for_host_port (a_host, a_port)
 		end
 
 end
