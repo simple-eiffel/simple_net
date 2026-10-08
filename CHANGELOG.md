@@ -2,6 +2,12 @@
 
 All notable changes to simple_net will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- The 11 `assert (..., True)` SCOOP tests now check real behaviour: objects are created on their own processor (or assigned to a `separate` entity) and read back through separate calls; the CONNECTION tests accept a real loopback connection. Tests only, no library change.
+
 ## [1.2.0] - 2026-10-08
 
 ### Fixed

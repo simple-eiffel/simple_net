@@ -6,7 +6,7 @@ note
 class TEST_SCOOP_CONSUMER
 
 inherit
-	TEST_SET_BASE
+	NET_TEST_SUPPORT
 
 feature -- Tests: Type Compatibility
 
@@ -31,11 +31,24 @@ feature -- Tests: Type Compatibility
 		end
 
 	test_connection_type_in_scoop_context
-			-- Verify CONNECTION type is SCOOP-compatible
+			-- A CONNECTION (created only by SERVER_SOCKET.accept) is usable as a separate entity.
+		local
+			l_server: SERVER_SOCKET
+			l_client: CLIENT_SOCKET
+			l_separate: separate CONNECTION
 		do
-			-- CONNECTION is deferred; can't instantiate directly
-			-- This test verifies the type exists and is visible
-			assert ("connection type exists", True)
+			l_server := listening_server
+			l_client := connected_client (l_server.local_address.port)
+			if attached l_server.accept as al_connection then
+				l_separate := al_connection
+				assert ("open through separate call", not connection_closed (l_separate))
+				assert_integers_equal ("nothing received yet", 0, connection_bytes_received (l_separate))
+				al_connection.close
+			else
+				assert ("accepted a connection", False)
+			end
+			l_client.close
+			l_server.close
 		end
 
 	test_address_type_in_scoop_context
@@ -70,18 +83,23 @@ feature -- Tests: Generic Types
 		end
 
 	test_client_socket_separate_keyword_compatible
-			-- Verify CLIENT_SOCKET can be used with separate keyword
+			-- A CLIENT_SOCKET created on a separate processor answers through a separate call.
+		local
+			l_separate: separate NET_CLIENT_HOLDER
 		do
-			-- This would normally require: create client.make_for_host_port (...)
-			-- For Phase 1, just verify the type is valid
-			assert ("separate CLIENT_SOCKET valid", True)
+			create l_separate.make (8082)
+			assert_integers_equal ("remote port", 8082, held_client_port (l_separate))
+			assert ("not connected", not held_client_connected (l_separate))
 		end
 
 	test_server_socket_separate_keyword_compatible
-			-- Verify SERVER_SOCKET can be used with separate keyword
+			-- A SERVER_SOCKET created on a separate processor answers through a separate call.
+		local
+			l_separate: separate SERVER_SOCKET
 		do
-			-- For Phase 1, just verify the type is valid
-			assert ("separate SERVER_SOCKET valid", True)
+			create l_separate.make_for_port (9003)
+			assert_integers_equal ("local port", 9003, server_local_port (l_separate))
+			assert ("not listening", not server_listening (l_separate))
 		end
 
 feature -- Tests: Void Safety
