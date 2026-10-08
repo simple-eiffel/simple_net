@@ -83,7 +83,6 @@ feature -- Status
 			-- Validates: exactly 4 octets, each 0-255, no leading zeros
 		local
 			parts: LIST [STRING]
-			i: INTEGER
 			octet_value: INTEGER
 			is_valid: BOOLEAN
 			octet: STRING

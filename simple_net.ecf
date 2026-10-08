@@ -12,7 +12,8 @@
 	<!-- Primary library target -->
 	<target name="simple_net">
 		<description>simple_net TCP socket library (no tests)</description>
-		<root class="SIMPLE_NET" feature="default_create"/>
+		<root class="SIMPLE_NET" feature="make"/>
+		<setting name="total_order_on_reals" value="true"/>
 
 		<!-- Concurrency and Safety Capabilities -->
 		<capability>
