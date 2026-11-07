@@ -1,12 +1,12 @@
 note
 	description: "[
-		An object that may own one open Winsock handle.
+		An object that may own one open socket handle.
 
 		The handle is released by the owner's close/error paths through
 		`release_handle'; `dispose' releases it if the object is collected while
 		the handle is still open, so a forgotten `close' does not leak a socket.
 		`dispose' touches no other Eiffel object (they may already be gone): it
-		calls closesocket on the stored handle only.
+		closes the stored handle only.
 	]"
 	author: "simple_net team"
 	date: "2026-10-08"
@@ -18,10 +18,12 @@ deferred class
 inherit
 	DISPOSABLE
 
+	NET_SOCKET_PRIMITIVES
+
 feature {NONE} -- Handle
 
 	handle: POINTER
-			-- Open Winsock handle; meaningful only when `has_handle'.
+			-- Open socket handle; meaningful only when `has_handle'.
 
 	has_handle: BOOLEAN
 			-- Is an open handle owned?
@@ -59,24 +61,6 @@ feature {NONE} -- Handle
 				c_owner_close (handle)
 				has_handle := False
 			end
-		end
-
-feature {NONE} -- C externals
-
-	c_owner_shutdown_send (a_socket: POINTER)
-			-- Send FIN on `a_socket'. Does not wait.
-		external
-			"C inline use <winsock2.h>"
-		alias
-			"shutdown ((SOCKET) $a_socket, SD_SEND);"
-		end
-
-	c_owner_close (a_socket: POINTER)
-			-- closesocket; with the default (no SO_LINGER) this does not wait.
-		external
-			"C inline use <winsock2.h>"
-		alias
-			"closesocket ((SOCKET) $a_socket);"
 		end
 
 end

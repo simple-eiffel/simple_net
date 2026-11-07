@@ -106,7 +106,7 @@ feature -- Library Metadata
 	description: STRING
 			-- Library description
 		do
-			Result := "simple_net: TCP Socket Abstraction Library - IPv4 TCP over Winsock 2 (inline C)"
+			Result := "simple_net: TCP Socket Abstraction Library - IPv4 TCP on Windows, macOS and Linux"
 		ensure
 			result_not_void: Result /= Void
 		end

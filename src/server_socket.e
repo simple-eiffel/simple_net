@@ -1,6 +1,6 @@
 note
 	description: "[
-		TCP server socket (accepts inbound connections), IPv4, Winsock 2.
+		TCP server socket (accepts inbound connections), IPv4.
 
 		`listen' binds `local_address' (exclusively: no other socket may share
 		the port) and starts the queue; `accept' waits up to `timeout' for the
