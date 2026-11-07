@@ -1,6 +1,6 @@
 note
 	description: "[
-		TCP client socket (initiates outbound connections), IPv4, Winsock 2.
+		TCP client socket (initiates outbound connections), IPv4.
 
 		Lifecycle: create -> `connect' -> `send' / `receive' ... -> `close'.
 

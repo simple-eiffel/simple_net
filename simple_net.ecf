@@ -37,6 +37,7 @@
 				<platform value="windows"/>
 			</condition>
 		</external_object>
+		<external_include location="$(SIMPLE_EIFFEL)/simple_net/Clib"/>
 
 		<!-- ISE Core Libraries (allowed: no simple_* equivalent) -->
 		<library name="base" location="$ISE_LIBRARY/library/base/base.ecf">
@@ -51,6 +52,16 @@
 		<!-- Source Code Cluster -->
 		<cluster name="src" location=".\src" recursive="false">
 			<description>simple_net source code</description>
+		</cluster>
+		<cluster name="platform_windows" location=".\platform\windows">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</cluster>
+		<cluster name="platform_posix" location=".\platform\posix">
+			<condition>
+				<platform excluded_value="windows"/>
+			</condition>
 		</cluster>
 
 	</target>
