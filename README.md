@@ -24,18 +24,18 @@ Part of the [Simple Eiffel](https://github.com/simple-eiffel) ecosystem.
 
 ## Status
 
-✅ **v1.2.0** - real TCP over Winsock 2
+✅ **v1.2.0** - real TCP (Winsock 2 on Windows, BSD sockets on macOS and Linux)
 - `CLIENT_SOCKET`, `SERVER_SOCKET` and `CONNECTION` do real I/O (before 1.2.0 they were stubs that
   did none: connect "succeeded", sends were only counted, receives returned nothing)
 - IPv4 literals and host names; connect, send, receive and accept all bounded by `timeout`
 - `send` sends every byte; `receive` returns up to N bytes; `receive_exactly` returns N unless the peer
   closes first
-- Errors carry the Winsock code: `last_error_code` (e.g. 10061 refused, 10060 timed out) and
+- Errors carry the Winsock code on every platform: `last_error_code` (e.g. 10061 refused, 10060 timed out) and
   `last_error_string`; an error releases the socket; `close` is graceful and repeatable
-- Inline C (`ws2_32`), no ISE net library; every waiting external is `blocking` (SCOOP-safe)
+- Inline C (`ws2_32` on Windows, POSIX sockets elsewhere, with SIGPIPE off), no ISE net library; every waiting external is `blocking` (SCOOP-safe)
 - 156 tests passing with contracts monitored, including loopback round trips of zero-length,
   NUL, all-256-values and 1 MiB payloads against a peer on its own SCOOP processor
-- Windows only
+- Windows, macOS and Linux
 
 ## Overview
 
@@ -100,6 +100,10 @@ end
 1. Set the ecosystem environment variable (one-time setup for all simple_* libraries):
 ```
 SIMPLE_EIFFEL=D:\prod
+```
+On macOS or Linux:
+```bash
+export SIMPLE_EIFFEL=$HOME/simple_eiffel
 ```
 
 2. Add to ECF:
