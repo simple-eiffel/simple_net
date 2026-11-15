@@ -87,6 +87,18 @@ feature {NONE} -- Test Runners
 			run_test (agent address_tests.test_is_ipv4_address_detects_ipv4, "test_is_ipv4_address_detects_ipv4")
 			run_test (agent address_tests.test_is_loopback_identifies_loopback, "test_is_loopback_identifies_loopback")
 			run_test (agent address_tests.test_address_immutable_after_creation, "test_address_immutable_after_creation")
+				-- IPv4 validation (port-coordination #17: these ran in no gate)
+			run_test (agent address_tests.test_ipv4_validation_all_zeros, "test_ipv4_validation_all_zeros")
+			run_test (agent address_tests.test_ipv4_validation_all_max, "test_ipv4_validation_all_max")
+			run_test (agent address_tests.test_ipv4_validation_loopback, "test_ipv4_validation_loopback")
+			run_test (agent address_tests.test_ipv4_validation_rejects_octet_over_255, "test_ipv4_validation_rejects_octet_over_255")
+			run_test (agent address_tests.test_ipv4_validation_rejects_too_few_octets, "test_ipv4_validation_rejects_too_few_octets")
+			run_test (agent address_tests.test_ipv4_validation_rejects_too_many_dots, "test_ipv4_validation_rejects_too_many_dots")
+			run_test (agent address_tests.test_ipv4_validation_rejects_non_numeric, "test_ipv4_validation_rejects_non_numeric")
+			run_test (agent address_tests.test_ipv4_validation_rejects_mixed_numeric, "test_ipv4_validation_rejects_mixed_numeric")
+			run_test (agent address_tests.test_ipv4_validation_rejects_leading_zeros, "test_ipv4_validation_rejects_leading_zeros")
+			run_test (agent address_tests.test_ipv4_validation_rejects_only_dots, "test_ipv4_validation_rejects_only_dots")
+			run_test (agent address_tests.test_ipv4_validation_rejects_negative_octet, "test_ipv4_validation_rejects_negative_octet")
 		end
 
 	run_error_type_tests
